@@ -7,6 +7,24 @@ on:
     branches: [main]
 
 jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release For Tag
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ needs.changelog.outputs.changelog }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') }}
+
   build:
     name: Build Executables
     needs: create_release
@@ -14,10 +32,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - os: ubuntu-latest
-          - os: macos-latest
+            BUILD_CMD: pyinstaller -F --windowed launcher.spec
+            OUT_FILE_NAME: duskhaven_launcher
           - os: windows-latest
+            BUILD_CMD: pyinstaller -F --windowed launcher.spec
+            OUT_FILE_NAME: duskhaven_launcher.exe
     steps:
       - uses: actions/checkout@v3
       - name: Setup Python
@@ -30,4 +51,12 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       - name: Build with pyinstaller for ${{ matrix.config.os }}
-        run: pyinstaller -F --windowed game.spec
+        run: pyinstaller -F --windowed launcher.spec
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_name: "${{runner.os}}-${{matrix.OUT_FILE_NAME}}"
+          asset_path: "./dist/${{matrix.OUT_FILE_NAME}}"
