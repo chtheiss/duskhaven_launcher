@@ -15,8 +15,8 @@ jobs:
       - name: PyInstaller Windows
         uses: JackMcKew/pyinstaller-action-windows@main
         with:
-          entry_point: main.py
-          additional_args: "-F --windowed"
+          entryPoint: main.py
+          args: "-F --windowed"
 
       - uses: actions/upload-artifact@v2
         with:
