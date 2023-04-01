@@ -34,7 +34,8 @@ class ProgessTrackThread(BackgroundThread):
         super().__init__(file, download_start_time, total_file_size)
 
     def run(self, file, download_start_time, total_file_size):
-        current_file_size = 0
+        start_file_size = file.stat().st_size if file.exists() else 0
+        current_file_size = start_file_size
         while not self.stopped and current_file_size < total_file_size:
             if not file.exists():
                 continue
@@ -47,7 +48,8 @@ class ProgessTrackThread(BackgroundThread):
                 progress_percent = file_size / total_file_size * 100
                 current_file_size_in_mb = current_file_size / 1024 / 1024
                 total_file_size_in_mb = total_file_size / 1024 / 1024
-                avg_download_speed = current_file_size / time_diff / 1024 / 1024
+                downloaded_size = current_file_size - start_file_size
+                avg_download_speed = downloaded_size / time_diff / 1024 / 1024
                 time_remaining = format_time(
                     int(
                         (total_file_size_in_mb - current_file_size_in_mb)

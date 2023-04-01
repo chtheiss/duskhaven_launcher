@@ -1,4 +1,3 @@
-import json
 import os
 import pathlib
 import tempfile
@@ -11,9 +10,9 @@ from config import Config
 
 
 @Gooey(
-    disable_progress_bar_animation=True,
-    progress_regex=r"^Progress: (\d+)% (.*)$",
-    progress_expr="x[0]",
+    disable_progress_bar_animation=False,
+    # progress_regex=r"^Progress: (\d+)% (.*)$",
+    # progress_expr="x[0]",
 )
 def parse_args():
     parser = GooeyParser(description="My Cool Gooey App!")
@@ -67,7 +66,7 @@ def main(args):
     ]
     for dest_path in dest_paths:
         file = str(dest_path.name)
-        download.update_file(Config.LINKS[file], file, info, dest_path)
+        download.download_or_update_file(Config.LINKS[file], file, info, dest_path)
 
 
 def more_main():

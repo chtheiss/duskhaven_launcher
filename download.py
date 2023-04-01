@@ -1,3 +1,4 @@
+import os
 import pathlib
 import shutil
 import signal
@@ -24,6 +25,21 @@ def fetch_etag(url):
     return response.headers.get("etag")
 
 
+def fetch_size(url):
+    """
+    Fetches the size of the file at the given URL.
+
+    Args:
+    url (str): The URL to fetch the file size for.
+
+    Returns:
+    int: The size of the file at the given URL.
+    """
+    response = requests.head(url)
+    response.raise_for_status()
+    return int(response.headers.get("Content-Length", 0))
+
+
 def check_etag(url, info, key):
     if key not in info:
         utils.update_key_in_info_file(key, "")
@@ -33,9 +49,11 @@ def check_etag(url, info, key):
     return False
 
 
-def update_file(url, local_filename, info, dest_path=None):
+def download_or_update_file(url, local_filename, info, dest_path=None):
     print(f"Checking {local_filename}...", flush=True)
-    if check_etag(url, info, f"{local_filename}-etag"):
+    etag_up_to_date = check_etag(url, info, f"{local_filename}-etag")
+    path_exists = dest_path is not None and dest_path.exists()
+    if etag_up_to_date and path_exists:
         print(f"{local_filename} already up-to-date", flush=True)
     else:
         print(f"{local_filename} outdated or does not exist.")
@@ -55,26 +73,48 @@ def download_file(url, local_filename, dest_path=None):
     """
     if dest_path is None:
         dest_path = pathlib.Path(local_filename)
+
+    temp_dest_path = pathlib.Path(f"{dest_path}.part")
+
+    download_path = temp_dest_path or dest_path
+
+    total_size = fetch_size(url)
+
+    headers = {}
+    if download_path.exists():
+        file_size = os.path.getsize(download_path)
+        print(f"Resuming download of {local_filename}", flush=True)
+        print(f"File size: {file_size}", flush=True)
+        print(f"Total size: {total_size}", flush=True)
+        print(f"Range: bytes={file_size}-{total_size}", flush=True)
+        headers = {"Range": f"bytes={file_size}-{total_size}"}
+        mode = "ab"
+    else:
+        mode = "wb"
+
     # Download the file
-    with requests.get(url, stream=True) as response:
+    with requests.get(url, headers=headers, stream=True) as response:
         response.raise_for_status()
-        total_size = int(response.headers.get("Content-Length", 0))
         download_start_time = time.time()
         progress_thread = threads.ProgessTrackThread(
-            dest_path, download_start_time, total_size
+            download_path, download_start_time, total_size
         )
         signal_handler = utils.SignalHandler(progress_thread)
         signal.signal(signal.SIGINT, signal_handler)
 
         progress_thread.start()
         print(f"Start downloading {local_filename}", flush=True)
-        with open(dest_path, "wb") as file:
+        with open(download_path, mode) as file:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     file.write(chunk)
         etag = fetch_etag(url)
         utils.update_key_in_info_file(f"{local_filename}-etag", etag)
+
         progress_thread.stop()
+
+    if temp_dest_path is not None:
+        shutil.move(temp_dest_path, dest_path)
 
 
 def download_and_prepare_wow_client(
