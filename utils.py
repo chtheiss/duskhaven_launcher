@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import shutil
+import sys
 import zipfile
 
 
@@ -13,6 +14,7 @@ class SignalHandler:
     def __call__(self, sig, frame):
         print("Interrupt signal received. Stopping background threads...", flush=True)
         self.thread.stop()
+        sys.exit()
 
 
 def calculate_md5(filepath):
