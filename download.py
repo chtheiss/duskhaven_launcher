@@ -1,6 +1,6 @@
 import pathlib
+import shutil
 import signal
-import tempfile
 import time
 
 import requests
@@ -9,33 +9,40 @@ import threads
 import utils
 
 
-def download_mega_file(mega, url, dest_path, dest_filename):
-    download_start_time = time.time()
-    file_handle = mega.get_public_url_info(url)
-    total_file_size = int(file_handle["size"])
-    dest_file = pathlib.Path(dest_path) / dest_filename
-    if dest_file.is_file():
-        file_stats = dest_file.stat()
-        local_file_size = file_stats.st_size
-        if local_file_size == total_file_size:
-            print(f"Skipping {dest_file} because it is already up-to-date.", flush=True)
-            return
-    tempfiles = pathlib.Path(tempfile.gettempdir()).glob("megapy_*")
-    progress_thread = threads.ProgessTrackThread(
-        tempfiles, download_start_time, total_file_size
-    )
-    signal_handler = utils.SignalHandler(progress_thread)
-    signal.signal(signal.SIGINT, signal_handler)
+def fetch_etag(url):
+    """
+    Fetches the ETag for the given URL.
 
-    progress_thread.start()
+    Args:
+    url (str): The URL to fetch the ETag for.
 
-    print(f"Start downloading {dest_file}", flush=True)
-    mega.download_url(url, dest_path=dest_path, dest_filename=dest_filename)
-
-    progress_thread.stop()
+    Returns:
+    str: The ETag for the given URL.
+    """
+    response = requests.head(url)
+    response.raise_for_status()
+    return response.headers.get("etag")
 
 
-def download_file(url, local_filename):
+def check_etag(url, info, key):
+    if key not in info:
+        utils.update_key_in_info_file(key, "")
+        return False
+    if info[key] == fetch_etag(url):
+        return True
+    return False
+
+
+def update_file(url, local_filename, info, dest_path=None):
+    print(f"Checking {local_filename}...", flush=True)
+    if check_etag(url, info, f"{local_filename}-etag"):
+        print(f"{local_filename} already up-to-date", flush=True)
+    else:
+        print(f"{local_filename} outdated or does not exist.")
+        download_file(url, local_filename, dest_path)
+
+
+def download_file(url, local_filename, dest_path=None):
     """
     Downloads a file from the given URL and saves it to the local file system.
 
@@ -46,23 +53,27 @@ def download_file(url, local_filename):
     Returns:
     None
     """
+    if dest_path is None:
+        dest_path = pathlib.Path(local_filename)
     # Download the file
     with requests.get(url, stream=True) as response:
         response.raise_for_status()
         total_size = int(response.headers.get("Content-Length", 0))
         download_start_time = time.time()
         progress_thread = threads.ProgessTrackThread(
-            [local_filename], download_start_time, total_size
+            dest_path, download_start_time, total_size
         )
         signal_handler = utils.SignalHandler(progress_thread)
         signal.signal(signal.SIGINT, signal_handler)
 
         progress_thread.start()
         print(f"Start downloading {local_filename}", flush=True)
-        with open(local_filename, "wb") as file:
+        with open(dest_path, "wb") as file:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     file.write(chunk)
+        etag = fetch_etag(url)
+        utils.update_key_in_info_file(f"{local_filename}-etag", etag)
         progress_thread.stop()
 
 

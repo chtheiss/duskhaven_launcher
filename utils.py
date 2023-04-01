@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import pathlib
 import shutil
@@ -20,6 +21,26 @@ def calculate_md5(filepath):
         while chunk := file.read(8192):
             hash.update(chunk)
     return hash.hexdigest()
+
+
+def load_or_create_info_file():
+    info_file = pathlib.Path("wow_updater_info.json")
+    if info_file.exists():
+        with info_file.open("r") as file:
+            return json.load(file)
+    else:
+        with info_file.open("w") as file:
+            json.dump({}, file)
+            return {}
+
+
+def update_key_in_info_file(key, value):
+    info_file = pathlib.Path("wow_updater_info.json")
+    info = load_or_create_info_file()
+    info[key] = value
+    with info_file.open("w") as file:
+        json.dump(info, file)
+    return info
 
 
 def check_wow_install(install_folder):

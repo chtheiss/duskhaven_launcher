@@ -1,3 +1,2 @@
 Gooey
-git+https://github.com/guibsonmoura/mega.py@hotfix/download-file#egg=mega.py
 requests
