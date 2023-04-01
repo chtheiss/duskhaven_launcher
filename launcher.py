@@ -45,7 +45,6 @@ def main(args):
     install_folder = pathlib.Path(info["install_folder"])
     install_folder.mkdir(parents=True, exist_ok=True)
 
-    """
     print("Checking WoW Installation", flush=True)
     if utils.check_wow_install(install_folder):
         print("Found existing WoW client", flush=True)
@@ -56,7 +55,6 @@ def main(args):
             wow_client_link_info=Config.LINKS["wow-folder"],
             wow_exe_link_info=Config.LINKS["wow-exe"],
         )
-    """
 
     dest_paths = [
         install_folder / "wow.exe",
