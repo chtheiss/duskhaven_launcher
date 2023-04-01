@@ -7,6 +7,7 @@ Simple progam to download or update the WoW 3.3.5a client and the patch-z, patch
 - Adjust the realmlist, remove cinematics and remove the original Wow.exe
 - Download/Update the custom files (patch-z, patch-5, patch-A and wow.exe) required to play on Duskhaven
 - Automatic resume of interrupted downloads
+- The launcher saves the version info of the different files and the installation folder in a `wow_updater_info.json`. The `launcher.exe` and `wow_updater_info.json` **must be in the same folder**.
 
 ### Build locally
 Install the requirements by running:
