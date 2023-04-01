@@ -130,3 +130,4 @@ dmypy.json
 .vscode/
 .ruff_cache/
 WoW-Duskhaven/
+wow_updater_info.json
