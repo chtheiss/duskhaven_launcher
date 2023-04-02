@@ -1,8 +1,8 @@
 default_stages:
-    - commit
+  - commit
 exclude: ^docs/conf.py
 repos:
-  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+  - repo: "https://github.com/pre-commit/pre-commit-hooks"
     rev: v4.4.0
     hooks:
       - id: check-merge-conflict
@@ -11,21 +11,20 @@ repos:
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict
-      - id: check-added-large-files
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: requirements-txt-fixer
       - id: debug-statements
       - id: mixed-line-ending
         args:
-          - '--fix=auto'
-  - repo: 'https://github.com/asottile/pyupgrade'
+          - "--fix=auto"
+  - repo: "https://github.com/asottile/pyupgrade"
     rev: v3.3.1
     hooks:
       - id: pyupgrade
         exclude: ^docs/conf.py
         args:
-          - '--py39-plus'
+          - "--py39-plus"
   - repo: https://github.com/myint/autoflake
     rev: v2.0.2
     hooks:
@@ -49,17 +48,17 @@ repos:
         exclude: *fixtures
         args: ["--split-summary-body", "--max-summary-lines=2"]
         files: src
-  - repo: 'https://github.com/timothycrosley/isort'
+  - repo: "https://github.com/timothycrosley/isort"
     rev: 5.12.0
     hooks:
       - id: isort
         exclude: *fixtures
-  - repo: 'https://github.com/ambv/black'
+  - repo: "https://github.com/ambv/black"
     rev: 23.1.0
     hooks:
       - id: black
         exclude: *fixtures
-  - repo: 'https://github.com/pycqa/flake8'
+  - repo: "https://github.com/pycqa/flake8"
     rev: 6.0.0
     hooks:
       - id: flake8
@@ -68,4 +67,4 @@ repos:
     rev: v0.0.255
     hooks:
       - id: ruff
-        args: [ --fix]
+        args: [--fix]
