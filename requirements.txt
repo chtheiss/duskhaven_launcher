@@ -1,2 +1,2 @@
-Gooey
+PySide2
 requests

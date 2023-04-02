@@ -40,13 +40,19 @@ def fetch_size(url):
     return int(response.headers.get("Content-Length", 0))
 
 
-def check_etag(url, info, key):
-    if key not in info:
-        utils.update_key_in_info_file(key, "")
-        return False
-    if info[key] == fetch_etag(url):
+def check_etag(url, etag):
+    if etag == fetch_etag(url):
         return True
     return False
+
+
+def file_requires_update(url, dest_path, etag):
+    print(f"Checking {dest_path}...", flush=True)
+    etag_up_to_date = fetch_etag(url)
+    path_exists = dest_path is not None and dest_path.exists()
+    if etag_up_to_date and path_exists:
+        return False
+    return True
 
 
 def download_or_update_file(url, local_filename, info, dest_path=None):
@@ -117,20 +123,8 @@ def download_file(url, local_filename, dest_path=None):
         shutil.move(temp_dest_path, dest_path)
 
 
-def download_and_prepare_wow_client(
-    install_folder, wow_client_link_info, wow_exe_link_info
-):
+def download_and_prepare_wow_client(install_folder, url):
     wow_client_zip_file = "wow.zip"
     wow_client_zip_path = install_folder / wow_client_zip_file
-    md5_match = False
-    while not md5_match:
-        download_file(wow_client_link_info["url"], wow_client_zip_path)
-        local_md5_hash = utils.calculate_md5(wow_client_zip_path)
-        if local_md5_hash == wow_client_link_info["md5"]:
-            md5_match = True
-        else:
-            print("File was corrupted during download. Trying again.", flush=True)
-
-    utils.prepare_wow_folder(
-        install_folder, wow_client_zip_path, wow_exe_link_info["original_md5"]
-    )
+    download_file(url, wow_client_zip_path)
+    utils.prepare_wow_folder(install_folder, wow_client_zip_path)

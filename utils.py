@@ -76,7 +76,7 @@ def check_wow_install(install_folder):
     return True
 
 
-def prepare_wow_folder(install_folder, wow_client_zip_path, wow_exe_md5_hashes):
+def prepare_wow_folder(install_folder, wow_client_zip_path):
     successful = True
     # Extract WoW zip
     if wow_client_zip_path.exists():
@@ -85,12 +85,12 @@ def prepare_wow_folder(install_folder, wow_client_zip_path, wow_exe_md5_hashes):
             zip_ref.extractall(install_folder)
 
     print("Moving files", flush=True)
-    source_path = install_folder / "World of Warcraft 3.3.5a.12340 enGB/"
+    source_path = install_folder / "WoW 3.3.5/"
 
     files = source_path.glob("**/*")
     for file in files:
         parts = list(file.parts)
-        parts.remove("World of Warcraft 3.3.5a.12340 enGB")
+        parts.remove("WoW 3.3.5")
         destination = pathlib.Path(*parts)
         print(f"Moving {file}")
         shutil.move(file, destination)
@@ -104,15 +104,12 @@ def prepare_wow_folder(install_folder, wow_client_zip_path, wow_exe_md5_hashes):
             print(f"Folder does not exist: {source_path}", flush=True)
 
     original_wow_exe_path = install_folder / "Wow.exe"
-    if (
-        os.path.exists(original_wow_exe_path)
-        and calculate_md5(original_wow_exe_path) in wow_exe_md5_hashes
-    ):
+    if os.path.exists(original_wow_exe_path):
         print("Removing old Wow.exe", flush=True)
         os.remove(original_wow_exe_path)
 
     cinematics = ["wow_fotlk_1024.avi", "wow_wrathgate_1024.avi"]
-    cinematics_folder = install_folder / "Data" / "enGB" / "Interface" / "Cinematics"
+    cinematics_folder = install_folder / "Data" / "enUS" / "Interface" / "Cinematics"
     for cinematic in cinematics:
         cinematic_path = cinematics_folder / cinematic
         if cinematic_path.exists():
@@ -120,7 +117,7 @@ def prepare_wow_folder(install_folder, wow_client_zip_path, wow_exe_md5_hashes):
             os.remove(cinematic_path)
 
     print("Changing realmlist", flush=True)
-    realm_list_path = install_folder / "Data" / "enGB" / "realmlist.wtf"
+    realm_list_path = install_folder / "Data" / "enUS" / "realmlist.wtf"
     with open(realm_list_path, "w") as realm_list_file:
         realm_list_file.write("set realmlist duskhaven.servegame.com")
 
