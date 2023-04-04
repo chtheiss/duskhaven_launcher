@@ -33,18 +33,9 @@ pip install -r requirements.txt
 pip install nuitka
 ```
 
-Run the nuitka:
+Run the Nuitka:
 
 ```
-python -m nuitka \
---standalone \
---enable-plugin=pyside6 \
---disable-console \
---onefile \
---include-data-dir=images=images \
---windows-icon-from-icoe-data-dir=images=images \
---windows-icon-from-ico=images/favicon.ico \
---output-dir=dist \
---output-file=launcher.exe \
-pylauncher.py
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist --output-file=launcher.exe  pylauncher.py
+
 ```
