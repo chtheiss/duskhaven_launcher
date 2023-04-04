@@ -117,6 +117,7 @@ class Launcher(QMainWindow):
         self.progress_bar_label_layout.addItem(spacer)
         self.progress_bar_label_layout.addWidget(self.autoplay_in_label)
         self.progress_bar_label_layout.addWidget(self.autoplay)
+        self.progress_bar_label_layout.setContentsMargins(0, 0, 0, 0)
         self.progress_bar_layout.addLayout(self.progress_bar_label_layout)
         self.progress_bar_layout.addWidget(self.progress_bar)
 
