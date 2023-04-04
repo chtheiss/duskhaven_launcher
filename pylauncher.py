@@ -191,7 +191,9 @@ class Launcher(QMainWindow):
         self.quit_button.setAutoFillBackground(False)
         self.quit_button.setText("")
         self.quit_button.setObjectName("close")
-        self.quit_button.setIcon(QIcon("images/icons8-close-button-64.png"))
+        self.quit_button.setIcon(
+            QIcon(os.path.join(basedir, "images", "icons8-close-button-64.png"))
+        )
         self.quit_button.setIconSize(QtCore.QSize(self.width * 0.02, self.width * 0.02))
         self.quit_button.setFlat(True)
         self.quit_button.clicked.connect(self.quit_game)
