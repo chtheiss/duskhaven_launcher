@@ -21,7 +21,7 @@ The newest release is available [here](https://github.com/chtheiss/duskhaven_lau
 ### Known Issues
 
 - Download speed and time tracking is a bit wonky when pausing/resuming a download
-- The Launcher cannot detect what version the customs files are if you have downloaded them manually. Hence it needs to redownload the custom files even if you have them already. For the WoW client itself with have MD5 hashes so that you do not need to redownload the original client itself.
+- The Launcher cannot detect what version the customs files are if you have downloaded them manually. Hence it needs to redownload the custom files even if you have them already. For the WoW client itself we have MD5 hashes so that you do not need to redownload the original client itself.
 - The launcher currently has no functionality to check if there is a new version of the launcher available
 
 ### Build locally
