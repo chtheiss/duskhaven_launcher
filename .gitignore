@@ -132,3 +132,4 @@ dmypy.json
 WoW-Duskhaven/
 config.json
 wow-client.zip
+*.part

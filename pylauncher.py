@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 from PySide2 import QtCore
-from PySide2.QtGui import QColor, QCursor, QPalette, QPixmap, Qt
+from PySide2.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
 from PySide2.QtWidgets import (
     QApplication,
     QDesktopWidget,
@@ -16,6 +16,8 @@ from PySide2.QtWidgets import (
     QMainWindow,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -35,7 +37,8 @@ class Launcher(QMainWindow):
         # Set window title and size
         self.setWindowTitle("Game Launcher")
         self.setMinimumSize(400, 300)
-        height, _ = self.adjust_size()
+        self._width, self._height = self.adjust_size()
+        self.create_background()
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
 
         # Load configuration
@@ -47,35 +50,39 @@ class Launcher(QMainWindow):
         self.task.finished_download.connect(self.download_next_or_stop)
         self.task.start()
 
+        # Create a font and set it as the label's font
+        self.font = QFont()
+        self.font.setPointSize(12)  # Set an initial font size
+
         # Create layouts
         main_layout = QVBoxLayout()
-        progress_bar_layout = QVBoxLayout()
+        main_layout.setSpacing(0)
         button_layout = QHBoxLayout()
+        top_bar_layout = QHBoxLayout()
 
-        self.create_background()
-        progress_bar_layout.setContentsMargins(10, height * 0.4, 10, 0)
+        self.create_top_bar(top_bar_layout)
+
         button_layout.setContentsMargins(0, 10, 0, 0)
 
         # Create widgets
         self.progress_bar_label = QLabel("")
         self.progress_bar_label.setObjectName("progress_label")
+        self.progress_bar_label.setMinimumHeight(self.height * 0.05)
+        self.progress_bar_label.setFont(self.font)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progress")
         self.progress_bar.setRange(0, 10000)
         self.create_start_button()
 
-        self.quit_button = QPushButton("Quit")
-        self.quit_button.setObjectName("quit")
-        self.quit_button.clicked.connect(self.quit_game)
-
         # Add widgets to layouts
-        progress_bar_layout.addWidget(self.progress_bar_label)
-        progress_bar_layout.addWidget(self.progress_bar)
         self.create_installation_dialog(main_layout)
+        button_layout.addWidget(self.progress_bar)
         button_layout.addWidget(self.start_button)
-        button_layout.addWidget(self.quit_button)
-        main_layout.addLayout(progress_bar_layout)
+        spacer = QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        main_layout.addLayout(top_bar_layout)
+        main_layout.addItem(spacer)
+        main_layout.addWidget(self.progress_bar_label)
         main_layout.addLayout(button_layout)
 
         # Set main layout
@@ -89,56 +96,38 @@ class Launcher(QMainWindow):
         self.setStyleSheet(
             """
             QLabel#progress_label {
-            font-size: 16px;
             color: white!important;
             margin-top: 0px;
             margin-bottom: 10px;
-            margin-left: 20px;
+            margin-left: 40px;
             margin-right: 20px;
+        }
+        QLabel#official_site_link a {
+            color: white!important;
         }
 
 
         QProgressBar#progress {
-            min-height: 32px;
-            border-radius: 10px;
             background-color: #444444;
-            margin-left: 20px;
-            margin-right: 20px;
-            color: white;
-            font-size: 30px;
+            margin-left: 40px;
+            margin-right: 40px;
         }
 
         QProgressBar#progress::chunk {
             background-color: #0078d7;
-            border-radius: 10px;
         }
 
         QPushButton#start {
-            height: 50%;
-            font-size: 30px;
             color: white;
             background-color: #0078d7;
-            border-radius: 5px;
             margin-right: 10px;
             margin-left: 30px;
+            border-radius: 0px;
+            border: 0
         }
 
         QPushButton#start:hover {
             background-color: #0063ad;
-        }
-
-        QPushButton#quit {
-            height: 50%;
-            font-size: 30px;
-            color: white;
-            background-color: #8c8c8c;
-            border-radius: 5px;
-            margin-right: 30px;
-            margin-left: 10px;
-        }
-
-        QPushButton#quit:hover {
-            background-color: #6b6b6b;
         }
 
         QLabel#installation_path_label {
@@ -171,14 +160,72 @@ class Launcher(QMainWindow):
         """
         )
 
+    def create_top_bar(self, layout):
+        self.official_site_link = QLabel(
+            "<a style='color:white; text-decoration: none;' "
+            "href='https://duskhaven.servegame.com/'>Official Site</a>"
+        )
+        self.official_site_link.setObjectName("official_site_link")
+        self.official_site_link.setCursor(QCursor(Qt.PointingHandCursor))
+        self.official_site_link.setOpenExternalLinks(True)
+        self.official_site_link.setFont(self.font)
+        layout.addWidget(self.official_site_link)
+
+        self.discord_site_link = QLabel(
+            "<a style='color:white; text-decoration: none;' "
+            "href='https://discord.gg/duskhaven'>Discord</a>"
+        )
+        self.discord_site_link.setObjectName("discord_site_link")
+        self.discord_site_link.setCursor(QCursor(Qt.PointingHandCursor))
+        self.discord_site_link.setOpenExternalLinks(True)
+        self.discord_site_link.setFont(self.font)
+        layout.addWidget(self.discord_site_link)
+
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        layout.addItem(spacer)
+
+        self.button = QPushButton(self)
+        self.button.setGeometry(
+            self.width * 0.94, self.height * 0.01, self.width * 0.05, self.width * 0.05
+        )
+        self.button.setAutoFillBackground(False)
+        self.button.setText("")
+        self.button.setObjectName("close")
+        self.button.setIcon(QIcon("images/icons8-close-button-64.png"))
+        self.button.setIconSize(QtCore.QSize(self.width * 0.05, self.width * 0.05))
+        self.button.setFlat(True)
+        self.button.clicked.connect(self.quit_game)
+        button_style = """
+            QPushButton#close {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#close:focus {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#close::icon {
+                margin-right: 0px;
+                color: white;
+            }
+        """
+
+        self.button.setCursor(Qt.PointingHandCursor)
+        self.button.setStyleSheet(button_style)
+        layout.addWidget(self.button)
+
+        layout.setSpacing(20)
+
     def create_background(self):
         self.background = QLabel(self)
-        width, height = self.size().width(), self.size().height()
-        self.background.setGeometry(0, 0, width, height)
+        self.background.setGeometry(0, 0, self.width, self.height)
         self.background.setScaledContents(True)
-        self.background.setPixmap(
-            QPixmap(os.path.join(basedir, "images", "background.png"))
-        )
+        pixmap = QPixmap(os.path.join(basedir, "images", "background.png"))
+        cropped_pixmap = pixmap.copy(0, 150, pixmap.width(), pixmap.height() - 150)
+
+        self.background.setPixmap(cropped_pixmap)
         self.background.setAlignment(Qt.AlignCenter)
         self.background.mouseMoveEvent = self.mouseMoveEvent
 
@@ -190,12 +237,16 @@ class Launcher(QMainWindow):
         if not hasattr(self, "start_button"):
             self.start_button = QPushButton("Start")
             self.start_button.setObjectName("start")
+            self.start_button.setMinimumHeight(self.height * 0.07)
+            self.start_button.setMinimumWidth(self.width * 0.2)
+            self.start_button.setCursor(QCursor(Qt.PointingHandCursor))
+            self.start_button.setFont(self.font)
         if self.check_first_time_user():
-            self.start_button.setText("Install")
+            self.start_button.setText("INSTALL")
             self.start_button.clicked.connect(self.install_game)
             return
         elif self.configuration.get("install_in_progress", False):
-            self.start_button.setText("Resume")
+            self.start_button.setText("RESUME")
             self.start_button.clicked.connect(self.install_game)
             return
         install_folder = pathlib.Path(self.configuration["installation_path"])
@@ -221,10 +272,10 @@ class Launcher(QMainWindow):
                 self.configuration["download_queue"].append(full_file)
                 self.save_configuration()
         if self.configuration["download_queue"]:
-            self.start_button.setText("Update")
+            self.start_button.setText("UPDATE")
             self.start_button.clicked.connect(self.update_game)
         else:
-            self.start_button.setText("Play")
+            self.start_button.setText("PLAY")
             self.start_button.clicked.connect(self.start_game)
 
     def create_installation_dialog(self, main_layout):
@@ -251,14 +302,14 @@ class Launcher(QMainWindow):
 
     def update_game(self):
         if self.task.paused:
-            self.start_button.setText("Pause")
+            self.start_button.setText("PAUSE")
             file = self.configuration["download_queue"][0]
             self.task.url = Config.LINKS[file]
             self.task.resume(
                 pathlib.Path(self.configuration["installation_path"]) / file
             )
         else:
-            self.start_button.setText("Resume")
+            self.start_button.setText("RESUME")
             self.task.pause()
 
     def start_game(self):
@@ -270,8 +321,12 @@ class Launcher(QMainWindow):
     def install_game(self):
         # Did not attempt to install yet and user clicked install
         dest_path = self.configuration["download_queue"][0]
+        if hasattr(self, "installation_path_text"):
+            install_folder = self.installation_path_text.text()
+        else:
+            install_folder = self.configuration["installation_path"]
         if dest_path == "wow-client.zip" and utils.check_wow_install(
-            pathlib.Path(self.installation_path_text.text())
+            pathlib.Path(install_folder)
         ):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
@@ -291,7 +346,7 @@ class Launcher(QMainWindow):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
             self.installation_path_text.setVisible(False)
-            self.start_button.setText("Pause")
+            self.start_button.setText("PAUSE")
             self.configuration["installation_path"] = self.installation_path_text.text()
             self.save_configuration()
 
@@ -305,12 +360,12 @@ class Launcher(QMainWindow):
             )
         # Installation in progress and user clicked Resume
         elif self.task.paused:
-            self.start_button.setText("Pause")
+            self.start_button.setText("PAUSE")
             self.task.resume(
                 pathlib.Path(self.configuration["installation_path"]) / dest_path
             )
         else:
-            self.start_button.setText("Resume")
+            self.start_button.setText("RESUME")
             self.task.pause()
 
     def quit_game(self):
@@ -332,7 +387,27 @@ class Launcher(QMainWindow):
     def resizeEvent(self, event):
         # Adjust the size and position of the launcher when the window is resized
         super().resizeEvent(event)
-        self.adjust_size()
+        self.height = event.size().height()
+        self.width = event.size().width()
+        # self.adjust_size()
+
+    @property
+    def height(self):
+        return self._height
+
+    @height.setter
+    def height(self, value):
+        self.background.setGeometry(0, 0, self.width, value)
+        self._height = value
+
+    @property
+    def width(self):
+        return self._width
+
+    @width.setter
+    def width(self, value):
+        self.background.setGeometry(0, 0, value, self.height)
+        self._width = value
 
     def check_first_time_user(self):
         # Check if this is the first time the user has run the launcher
@@ -377,7 +452,7 @@ class Launcher(QMainWindow):
             self.save_configuration()
             self.task.stop()
             self.start_button.clicked.connect(self.start_game)
-            self.start_button.setText("Play")
+            self.start_button.setText("PLAY")
 
     def load_configuration(self):
         # Load the configuration from a JSON file
