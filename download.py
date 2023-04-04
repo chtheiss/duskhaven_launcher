@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import signal
 import time
+from datetime import datetime, timezone
 
 import requests
 
@@ -23,6 +24,26 @@ def fetch_etag(url):
     response = requests.head(url)
     response.raise_for_status()
     return response.headers.get("etag")
+
+
+def fetch_file_modified_time(url):
+    """
+    Fetches the file modified time for the given URL.
+
+    Args:
+    url (str): The URL to fetch the file modified time for.
+
+    Returns:
+    str: The file modified time for the given URL.
+    """
+    response = requests.head(url)
+    response.raise_for_status()
+
+    date_string = response.headers.get("last-modified")
+    date_format = "%a, %d %b %Y %H:%M:%S %Z"
+    # parse the date string and convert to UTC timezone
+    date_utc = datetime.strptime(date_string, date_format).replace(tzinfo=timezone.utc)
+    return date_utc
 
 
 def fetch_size(url):
@@ -48,8 +69,15 @@ def check_etag(url, etag):
 
 def file_requires_update(url, dest_path, etag):
     print(f"Checking {dest_path}...", flush=True)
-    etag_up_to_date = fetch_etag(url)
+    etag_up_to_date = check_etag(url, etag)
     path_exists = dest_path is not None and dest_path.exists()
+    if not etag_up_to_date and path_exists:
+        modified = datetime.fromtimestamp(dest_path.stat().st_mtime, tz=timezone.utc)
+        remote_modified = fetch_file_modified_time(url)
+        if modified < remote_modified:
+            return True
+        else:
+            return False
     if etag_up_to_date and path_exists:
         return False
     return True
