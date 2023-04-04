@@ -30,7 +30,7 @@ from config import Config
 
 basedir = os.path.dirname(__file__)
 
-version = "v0.0.6"
+version = "v0.0.7"
 
 
 class Launcher(QMainWindow):
@@ -440,18 +440,17 @@ class Launcher(QMainWindow):
         self.configuration["just_updated"] = True
         self.save_configuration()
 
+        time.sleep(1)
         subprocess.Popen([old_version])
-        # Wait for the new version to start
-        time.sleep(2)
-
         # Kill the old version
-        exit()
+        time.sleep(1)
+        QApplication.quit()
 
     def start_game(self):
         subprocess.Popen(
             [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
         )
-        sys.exit(0)
+        QApplication.quit()
 
     def install_game(self):
         # Did not attempt to install yet and user clicked install
