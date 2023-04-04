@@ -184,17 +184,17 @@ class Launcher(QMainWindow):
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addItem(spacer)
 
-        self.button = QPushButton(self)
-        self.button.setGeometry(
-            self.width * 0.94, self.height * 0.01, self.width * 0.05, self.width * 0.05
+        self.quit_button = QPushButton(self)
+        self.quit_button.setGeometry(
+            self.width * 0.94, self.height * 0.01, self.width * 0.02, self.width * 0.02
         )
-        self.button.setAutoFillBackground(False)
-        self.button.setText("")
-        self.button.setObjectName("close")
-        self.button.setIcon(QIcon("images/icons8-close-button-64.png"))
-        self.button.setIconSize(QtCore.QSize(self.width * 0.05, self.width * 0.05))
-        self.button.setFlat(True)
-        self.button.clicked.connect(self.quit_game)
+        self.quit_button.setAutoFillBackground(False)
+        self.quit_button.setText("")
+        self.quit_button.setObjectName("close")
+        self.quit_button.setIcon(QIcon("images/icons8-close-button-64.png"))
+        self.quit_button.setIconSize(QtCore.QSize(self.width * 0.02, self.width * 0.02))
+        self.quit_button.setFlat(True)
+        self.quit_button.clicked.connect(self.quit_game)
         button_style = """
             QPushButton#close {
                 background-color: rgba(0, 0, 0, 0);
@@ -212,9 +212,9 @@ class Launcher(QMainWindow):
             }
         """
 
-        self.button.setCursor(Qt.PointingHandCursor)
-        self.button.setStyleSheet(button_style)
-        layout.addWidget(self.button)
+        self.quit_button.setCursor(Qt.PointingHandCursor)
+        self.quit_button.setStyleSheet(button_style)
+        layout.addWidget(self.quit_button)
 
         layout.setSpacing(20)
 

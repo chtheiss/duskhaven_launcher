@@ -1,11 +1,13 @@
 # Duskhaven Updater
 
+**This project is not associated with the Duskhaven Team in any way and is independently developed!**
+
 Simple progamm to download or update the WoW 3.3.5a client and the patch-z, patch-5, patch-A and custom wow.exe required to play on the Duskhaven WoW server.
 
 The newest release is available [here](https://github.com/chtheiss/duskhaven_launcher/releases).
 
 <p align="center">
-    <img src="https://github.com/chtheiss/duskhaven_launcher/readme-images/launcher.png" />
+    <img src="https://github.com/chtheiss/duskhaven_launcher/blob/main/readme-images/launcher.png" />
 </p>
 
 ### Current functionality
