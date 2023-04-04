@@ -30,11 +30,12 @@ Install the requirements by running:
 
 ```
 pip install -r requirements.txt
-pip install pyinstaller
+pip install nuitka
 ```
 
-Run the pyinstaller:
+Run the Nuitka:
 
 ```
-pyinstaller pylauncher.spec
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist --output-file=launcher.exe  pylauncher.py
+
 ```
