@@ -30,7 +30,7 @@ from config import Config
 
 basedir = os.path.dirname(__file__)
 
-version = "v0.0.4"
+version = "v0.0.5"
 
 
 class Launcher(QMainWindow):
