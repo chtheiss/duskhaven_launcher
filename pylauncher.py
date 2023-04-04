@@ -30,7 +30,7 @@ from config import Config
 
 basedir = os.path.dirname(__file__)
 
-version = "v0.0.5"
+version = "v0.0.6"
 
 
 class Launcher(QMainWindow):
@@ -43,6 +43,7 @@ class Launcher(QMainWindow):
         self._width, self._height = self.adjust_size()
         self.create_background()
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        self.setWindowIcon(QIcon(os.path.join(basedir, "images", "favicon.ico")))
 
         # Load configuration
         self.load_configuration()
@@ -200,8 +201,8 @@ class Launcher(QMainWindow):
 
     def create_top_bar(self, layout):
         self.official_site_link = QLabel(
-            "<a style='color:white; text-decoration: none; font-weight:300' "
-            "href='https://duskhaven.servegame.com/'>Official Site</a>"
+            "<a style='color:white; text-decoration: none; font-weight:500' "
+            "href='https://duskhaven.servegame.com/'>OFFICIAL SITE</a>"
         )
         self.official_site_link.setObjectName("official_site_link")
         self.official_site_link.setCursor(QCursor(Qt.PointingHandCursor))
@@ -210,8 +211,8 @@ class Launcher(QMainWindow):
         layout.addWidget(self.official_site_link)
 
         self.register_site_link = QLabel(
-            "<a style='color:white; text-decoration: none; font-weight:300' "
-            "href='https://duskhaven.servegame.com/account/register/'>Register</a>"
+            "<a style='color:white; text-decoration: none; font-weight:500' "
+            "href='https://duskhaven.servegame.com/account/register/'>REGISTER</a>"
         )
         self.register_site_link.setObjectName("register_site_link")
         self.register_site_link.setCursor(QCursor(Qt.PointingHandCursor))
@@ -220,8 +221,8 @@ class Launcher(QMainWindow):
         layout.addWidget(self.register_site_link)
 
         self.discord_site_link = QLabel(
-            "<a style='color:white; text-decoration: none; font-weight:300' "
-            "href='https://discord.gg/duskhaven'>Discord</a>"
+            "<a style='color:white; text-decoration: none; font-weight:500' "
+            "href='https://discord.gg/duskhaven'>DISCORD</a>"
         )
         self.discord_site_link.setObjectName("discord_site_link")
         self.discord_site_link.setCursor(QCursor(Qt.PointingHandCursor))
@@ -229,13 +230,60 @@ class Launcher(QMainWindow):
         self.discord_site_link.setFont(self.font)
         layout.addWidget(self.discord_site_link)
 
+        self.source_code = QLabel(
+            "<p style='color:white; text-decoration: none; font-weight:500'>"
+            f"Version {version}</p>"
+        )
+        self.source_code.setObjectName("source_code")
+        self.source_code.setCursor(QCursor(Qt.PointingHandCursor))
+        self.source_code.setOpenExternalLinks(True)
+        self.source_code.setFont(self.font)
+        layout.addWidget(self.source_code)
+
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addItem(spacer)
+
+        self.minimize_button = QPushButton(self)
+        self.minimize_button.setGeometry(
+            self.width * 1, self.height * 0.01, self.width * 0.04, self.width * 0.02
+        )
+        self.minimize_button.setAutoFillBackground(False)
+        self.minimize_button.setText("")
+        self.minimize_button.setObjectName("minimize")
+        self.minimize_button.setIcon(
+            QIcon(os.path.join(basedir, "images", "icons8-minimize-button-64.png"))
+        )
+        self.minimize_button.setIconSize(
+            QtCore.QSize(self.width * 0.04, self.width * 0.02)
+        )
+        self.minimize_button.setFlat(True)
+        self.minimize_button.clicked.connect(self.minimize_game)
+        button_style = """
+            QPushButton#minimize {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#minimize:focus {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#minimize::icon {
+                margin-right: 0px;
+                color: white;
+            }
+        """
+        self.minimize_button.setCursor(Qt.PointingHandCursor)
+        self.minimize_button.setStyleSheet(button_style)
+        self.minimize_button.setMaximumHeight(0.015 * self.height)
+        layout.addWidget(self.minimize_button)
 
         self.quit_button = QPushButton(self)
         self.quit_button.setGeometry(
             self.width * 0.94, self.height * 0.01, self.width * 0.02, self.width * 0.02
         )
+
         self.quit_button.setAutoFillBackground(False)
         self.quit_button.setText("")
         self.quit_button.setObjectName("close")
@@ -466,6 +514,9 @@ class Launcher(QMainWindow):
         # Save configuration and quit the application
         self.save_configuration()
         QApplication.quit()
+
+    def minimize_game(self):
+        self.showMinimized()
 
     def adjust_size(self):
         # Set the size and position of the launcher based on the
