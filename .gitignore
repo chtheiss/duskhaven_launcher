@@ -133,3 +133,7 @@ WoW-Duskhaven/
 config.json
 wow-client.zip
 *.part
+
+pylauncher.build/
+pylauncher.dist/
+pylauncher.onefile-build/

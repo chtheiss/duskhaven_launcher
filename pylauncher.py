@@ -5,12 +5,11 @@ import subprocess
 import sys
 import time
 
-from PySide2 import QtCore
-from PySide2.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
-from PySide2.QtWidgets import (
+from PySide6 import QtCore
+from PySide6.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
+from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QDesktopWidget,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -50,6 +49,8 @@ class Launcher(QMainWindow):
 
         if self.configuration.get("just_updated", False):
             os.remove("temp_launcher.exe")
+            self.configuration["just_updated"] = False
+            self.save_configuration()
 
         self.task = threads.BackgroundTask()
         self.task.progress_update.connect(self.update_progress)
@@ -469,11 +470,13 @@ class Launcher(QMainWindow):
     def adjust_size(self):
         # Set the size and position of the launcher based on the
         # size and resolution of the screen
-        screen = QDesktopWidget().screenGeometry()
-        width = screen.width() * 0.5
-        height = screen.height() * 0.5
-        x = (screen.width() - width) / 2
-        y = (screen.height() - height) / 2
+        screen = self.screen()
+        screen_geometry = screen.geometry()
+
+        width = screen_geometry.width() * 0.5
+        height = screen_geometry.height() * 0.5
+        x = (screen_geometry.width() - width) / 2
+        y = (screen_geometry.height() - height) / 2
         self.setGeometry(x, y, width, height)
         return width, height
 
@@ -595,4 +598,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     launcher = Launcher()
     launcher.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

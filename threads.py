@@ -5,7 +5,7 @@ import shutil
 import time
 
 import requests
-from PySide2.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal
 
 import download
 
