@@ -24,12 +24,14 @@ class BackgroundTask(QThread):
     progress_update = Signal(int)
     progress_label_update = Signal(str)
     finished_download = Signal(str, str)
+    finished_launcher_download = Signal()
 
     def __init__(self, url=None):
         super().__init__()
         self.paused = True
         self.dest_path = None
         self.url = url
+        self.total_size = None
 
     def run(self):
         if self.paused:
@@ -42,8 +44,7 @@ class BackgroundTask(QThread):
             temp_dest_path.parent.mkdir(parents=True, exist_ok=True)
 
         download_path = temp_dest_path or self.dest_path
-        total_size = download.fetch_size(self.url)
-
+        total_size = self.total_size or download.fetch_size(self.url)
         headers = {}
         if download_path.exists():
             file_size = os.path.getsize(download_path)
@@ -99,7 +100,12 @@ class BackgroundTask(QThread):
             shutil.move(temp_dest_path, self.dest_path)
 
         etag = download.fetch_etag(self.url)
-        self.finished_download.emit(str(self.dest_path), etag)
+
+        if self.total_size:
+            self.finished_launcher_download.emit()
+            self.total_size = None
+        else:
+            self.finished_download.emit(str(self.dest_path), etag)
 
     def pause(self):
         self.paused = True

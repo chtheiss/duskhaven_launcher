@@ -3,11 +3,13 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 from PySide2 import QtCore
 from PySide2.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
 from PySide2.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDesktopWidget,
     QFileDialog,
     QHBoxLayout,
@@ -29,6 +31,8 @@ from config import Config
 
 basedir = os.path.dirname(__file__)
 
+version = "v0.0.4"
+
 
 class Launcher(QMainWindow):
     def __init__(self):
@@ -44,51 +48,79 @@ class Launcher(QMainWindow):
         # Load configuration
         self.load_configuration()
 
+        if self.configuration.get("just_updated", False):
+            os.remove("temp_launcher.exe")
+
         self.task = threads.BackgroundTask()
         self.task.progress_update.connect(self.update_progress)
         self.task.progress_label_update.connect(self.update_progress_label)
         self.task.finished_download.connect(self.download_next_or_stop)
+        self.task.finished_launcher_download.connect(self.complete_launcher_update)
         self.task.start()
 
         # Create a font and set it as the label's font
         self.font = QFont()
         self.font.setPointSize(12)  # Set an initial font size
 
+        self.font_small = QFont()
+        self.font_small.setPointSize(8)  # Set an initial font size
+
         # Create layouts
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(0)
-        button_layout = QHBoxLayout()
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setSpacing(0)
+        self.button_layout = QHBoxLayout()
+        self.progress_bar_label_layout = QHBoxLayout()
         top_bar_layout = QHBoxLayout()
 
         self.create_top_bar(top_bar_layout)
-
-        button_layout.setContentsMargins(0, 10, 0, 0)
 
         # Create widgets
         self.progress_bar_label = QLabel("")
         self.progress_bar_label.setObjectName("progress_label")
         self.progress_bar_label.setMinimumHeight(self.height * 0.05)
-        self.progress_bar_label.setFont(self.font)
+        self.progress_bar_label.setFont(self.font_small)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progress")
         self.progress_bar.setRange(0, 10000)
+
+        self.autoplay = QCheckBox()
+        self.autoplay.setText("AUTO-PLAY")
+        self.autoplay.setObjectName("autoplay")
+        self.autoplay.setLayoutDirection(Qt.RightToLeft)
+        self.autoplay.setChecked(self.configuration.get("autoplay", False))
+        self.autoplay.toggled.connect(self.set_autoplay)
+
+        self.progress_bar_label_layout.addWidget(self.progress_bar_label)
+        # self.progress_bar_label_layout.addWidget(self.autoplay)
+
         self.create_start_button()
 
         # Add widgets to layouts
-        self.create_installation_dialog(main_layout)
-        button_layout.addWidget(self.progress_bar)
-        button_layout.addWidget(self.start_button)
-        spacer = QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        main_layout.addLayout(top_bar_layout)
-        main_layout.addItem(spacer)
-        main_layout.addWidget(self.progress_bar_label)
-        main_layout.addLayout(button_layout)
+        self.button_layout.addWidget(self.progress_bar)
+        self.button_layout.addWidget(self.start_button)
+        self.main_layout.addLayout(top_bar_layout)
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.main_layout.addItem(spacer)
+        dialog_created = self.create_installation_dialog()
+        if not dialog_created:
+            self.button_layout.setContentsMargins(0, 0, 0, 0)
+            self.main_layout.addLayout(self.progress_bar_label_layout)
+        else:
+            self.button_layout.setContentsMargins(0, 10, 0, 0)
+
+        self.main_layout.addLayout(self.button_layout)
 
         # Set main layout
         central_widget = QWidget()
-        central_widget.setLayout(main_layout)
+        central_widget.setLayout(self.main_layout)
         self.setCentralWidget(central_widget)
+
+        latest_version, latest_assets = utils.get_latest_release()
+        if utils.compare_versions(latest_version, version) == 1:
+            print("UPDATE")
+            print(latest_assets[0]["name"], latest_assets[0]["browser_download_url"])
+            self.update_launcher(latest_assets[0])
 
         # Connect signals to slots
 
@@ -102,7 +134,8 @@ class Launcher(QMainWindow):
             margin-left: 40px;
             margin-right: 20px;
         }
-        QLabel#official_site_link a {
+
+        QCheckBox#autoplay {
             color: white!important;
         }
 
@@ -131,27 +164,23 @@ class Launcher(QMainWindow):
         }
 
         QLabel#installation_path_label {
-            font-size: 16px;
-            color: white!important;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            color: white;
         }
 
         QLineEdit#installation_path_text {
-            font-size: 30px;
             color: white;
             border: none;
-            padding: 5px;
-            border-radius: 5px;
+            margin-left: 40px;
+            margin-right: 40px;
         }
 
         QPushButton#browse {
-            height: 30px;
-            font-size: 30px;
             color: white;
             background-color: #0078d7;
-            border-radius: 5px;
-            margin-left: 10px;
+            margin-right: 10px;
+            margin-left: 30px;
+            border-radius: 0px;
+            border: 0;
         }
 
         QPushButton#browse:hover {
@@ -160,9 +189,17 @@ class Launcher(QMainWindow):
         """
         )
 
+    def set_autoplay(self):
+        if self.autoplay.isChecked():
+            self.configuration["autoplay"] = True
+            if self.start_button.text() == "PLAY":
+                self.start_game()
+        else:
+            self.configuration["autoplay"] = False
+
     def create_top_bar(self, layout):
         self.official_site_link = QLabel(
-            "<a style='color:white; text-decoration: none;' "
+            "<a style='color:white; text-decoration: none; font-weight:300' "
             "href='https://duskhaven.servegame.com/'>Official Site</a>"
         )
         self.official_site_link.setObjectName("official_site_link")
@@ -171,8 +208,18 @@ class Launcher(QMainWindow):
         self.official_site_link.setFont(self.font)
         layout.addWidget(self.official_site_link)
 
+        self.register_site_link = QLabel(
+            "<a style='color:white; text-decoration: none; font-weight:300' "
+            "href='https://duskhaven.servegame.com/account/register/'>Register</a>"
+        )
+        self.register_site_link.setObjectName("register_site_link")
+        self.register_site_link.setCursor(QCursor(Qt.PointingHandCursor))
+        self.register_site_link.setOpenExternalLinks(True)
+        self.register_site_link.setFont(self.font)
+        layout.addWidget(self.register_site_link)
+
         self.discord_site_link = QLabel(
-            "<a style='color:white; text-decoration: none;' "
+            "<a style='color:white; text-decoration: none; font-weight:300' "
             "href='https://discord.gg/duskhaven'>Discord</a>"
         )
         self.discord_site_link.setObjectName("discord_site_link")
@@ -279,28 +326,41 @@ class Launcher(QMainWindow):
         else:
             self.start_button.setText("PLAY")
             self.start_button.clicked.connect(self.start_game)
+            if self.configuration.get("autoplay", False):
+                self.start_game()
 
-    def create_installation_dialog(self, main_layout):
+    def create_installation_dialog(self):
         if self.check_first_time_user():
             self.configuration["download_queue"] = list(Config.LINKS.keys())
             self.save_configuration()
-            self.installation_path_label = QLabel("Installation Path:")
+            self.installation_path_label = QLabel(
+                "<p style='color:white;'>Installation Path: </p>"
+            )
+            self.installation_path_label.setFont(self.font)
             self.installation_path_text = QLineEdit()
             self.installation_path_text.setText(
                 self.configuration.get(
                     "installation_path", os.path.join(os.getcwd(), "WoW Duskhaven")
                 )
             )
+            self.installation_path_text.setFont(self.font)
             self.installation_path_text.setReadOnly(True)
+
             self.browse_button = QPushButton("Browse")
             self.browse_button.setObjectName("browse")
+            self.browse_button.setMinimumHeight(self.height * 0.07)
+            self.browse_button.setMinimumWidth(self.width * 0.2)
+            self.browse_button.setCursor(QCursor(Qt.PointingHandCursor))
+            self.browse_button.setFont(self.font)
 
-            installation_path_layout = QHBoxLayout()
-            installation_path_layout.addWidget(self.installation_path_label)
-            installation_path_layout.addWidget(self.installation_path_text)
-            installation_path_layout.addWidget(self.browse_button)
-            main_layout.addLayout(installation_path_layout)
+            self.installation_path_layout = QHBoxLayout()
+            self.installation_path_layout.addWidget(self.installation_path_label)
+            self.installation_path_layout.addWidget(self.installation_path_text)
+            self.installation_path_layout.addWidget(self.browse_button)
+            self.main_layout.addLayout(self.installation_path_layout)
             self.browse_button.clicked.connect(self.show_installation_dialog)
+            return True
+        return False
 
     def update_game(self):
         if self.task.paused:
@@ -313,6 +373,30 @@ class Launcher(QMainWindow):
         else:
             self.start_button.setText("RESUME")
             self.task.pause()
+
+    def update_launcher(self, asset):
+        self.start_button.setText("UPDATING")
+        self.start_button.setEnabled(False)
+        file = asset["name"] + ".new"
+        self.task.total_size = asset["size"]
+        self.task.url = asset["browser_download_url"]
+        self.task.resume(file)
+
+    def complete_launcher_update(self):
+        old_version = "launcher.exe"
+        new_version = "launcher.exe.new"
+        temp_name = "temp_launcher.exe"
+        os.rename(old_version, temp_name)
+        os.rename(new_version, old_version)
+        self.configuration["just_updated"] = True
+        self.save_configuration()
+
+        subprocess.Popen([old_version])
+        # Wait for the new version to start
+        time.sleep(2)
+
+        # Kill the old version
+        exit()
 
     def start_game(self):
         subprocess.Popen(
@@ -333,6 +417,10 @@ class Launcher(QMainWindow):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
             self.installation_path_text.setVisible(False)
+            self.button_layout.setContentsMargins(0, 0, 0, 0)
+            index = self.main_layout.indexOf(self.button_layout)
+            self.main_layout.insertLayout(index - 1, self.progress_bar_label_layout)
+
             self.configuration["download_queue"].pop(0)
             self.configuration["installation_path"] = self.installation_path_text.text()
             self.configuration["install_in_progress"] = False
@@ -348,6 +436,9 @@ class Launcher(QMainWindow):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
             self.installation_path_text.setVisible(False)
+            self.button_layout.setContentsMargins(0, 0, 0, 0)
+            index = self.main_layout.indexOf(self.button_layout)
+            self.main_layout.insertWidget(index - 1, self.progress_bar_label)
             self.start_button.setText("PAUSE")
             self.configuration["installation_path"] = self.installation_path_text.text()
             self.save_configuration()

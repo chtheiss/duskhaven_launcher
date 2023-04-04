@@ -6,6 +6,8 @@ import shutil
 import sys
 import zipfile
 
+import requests
+
 
 class SignalHandler:
     def __init__(self, thread):
@@ -124,3 +126,48 @@ def prepare_wow_folder(install_folder, wow_client_zip_path):
     # Remove the zip file at the end
     if successful:
         os.remove(wow_client_zip_path)
+
+
+def compare_versions(v1, v2):
+    v1 = v1.removeprefix("v")
+    v2 = v2.removeprefix("v")
+    # Split the version strings into major, minor, and patch components
+    v1_parts = v1.split(".")
+    v2_parts = v2.split(".")
+
+    # Compare major version
+    if int(v1_parts[0]) > int(v2_parts[0]):
+        return 1
+    elif int(v1_parts[0]) < int(v2_parts[0]):
+        return -1
+
+    # Compare minor version
+    if int(v1_parts[1]) > int(v2_parts[1]):
+        return 1
+    elif int(v1_parts[1]) < int(v2_parts[1]):
+        return -1
+
+    # Compare patch version
+    if int(v1_parts[2]) > int(v2_parts[2]):
+        return 1
+    elif int(v1_parts[2]) < int(v2_parts[2]):
+        return -1
+
+    # Versions are equal
+    return 0
+
+
+def get_latest_release():
+    # Construct the URL for the GitHub API request
+    url = "https://api.github.com/repos/chtheiss/duskhaven_launcher/releases/latest"
+
+    # Make the API request and parse the response as JSON
+    response = requests.get(url)
+    data = response.json()
+
+    # Extract the tag name and asset names
+    tag_name = data["tag_name"]
+    assets = [asset for asset in data["assets"]]
+
+    # Return the results as a tuple
+    return (tag_name, assets)
