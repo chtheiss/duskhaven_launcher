@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import pathlib
 import subprocess
@@ -6,6 +7,7 @@ import sys
 import time
 
 from PySide6 import QtCore
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -30,6 +32,16 @@ from config import Config
 
 basedir = os.path.dirname(__file__)
 
+logging.basicConfig(
+    filename="launcher.log",
+    filemode="a",
+    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    level=logging.DEBUG,
+)
+
+logger = logging.getLogger("Duskhaven Launcher")
+
 version = "v0.0.7"
 
 
@@ -49,7 +61,7 @@ class Launcher(QMainWindow):
         self.load_configuration()
 
         if self.configuration.get("just_updated", False):
-            os.remove("temp_launcher.exe")
+            os.remove("temp_launcher")
             self.configuration["just_updated"] = False
             self.save_configuration()
 
@@ -71,6 +83,7 @@ class Launcher(QMainWindow):
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(0)
         self.button_layout = QHBoxLayout()
+        self.progress_bar_layout = QVBoxLayout()
         self.progress_bar_label_layout = QHBoxLayout()
         top_bar_layout = QHBoxLayout()
 
@@ -85,33 +98,47 @@ class Launcher(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progress")
         self.progress_bar.setRange(0, 10000)
+        self.progress_bar.setMaximumHeight(self.height * 0.02)
+
+        self.autoplay_in_label = QLabel("")
+        self.progress_bar.setObjectName("autoplay_in_label")
+        self.autoplay_in_label.setFont(self.font_small)
 
         self.autoplay = QCheckBox()
         self.autoplay.setText("AUTO-PLAY")
+        self.autoplay.setFont(self.font_small)
         self.autoplay.setObjectName("autoplay")
         self.autoplay.setLayoutDirection(Qt.RightToLeft)
         self.autoplay.setChecked(self.configuration.get("autoplay", False))
         self.autoplay.toggled.connect(self.set_autoplay)
 
         self.progress_bar_label_layout.addWidget(self.progress_bar_label)
-        # self.progress_bar_label_layout.addWidget(self.autoplay)
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.progress_bar_label_layout.addItem(spacer)
+        self.progress_bar_label_layout.addWidget(self.autoplay_in_label)
+        self.progress_bar_label_layout.addWidget(self.autoplay)
+        self.progress_bar_layout.addLayout(self.progress_bar_label_layout)
+        self.progress_bar_layout.addWidget(self.progress_bar)
 
         self.create_start_button()
-
         # Add widgets to layouts
-        self.button_layout.addWidget(self.progress_bar)
+        self.button_layout.addLayout(self.progress_bar_layout)
         self.button_layout.addWidget(self.start_button)
         self.main_layout.addLayout(top_bar_layout)
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout.addItem(spacer)
         dialog_created = self.create_installation_dialog()
         if not dialog_created:
-            self.button_layout.setContentsMargins(0, 0, 0, 0)
-            self.main_layout.addLayout(self.progress_bar_label_layout)
+            self.button_layout.setContentsMargins(0, 0, 0, self.height * 0.01)
         else:
-            self.button_layout.setContentsMargins(0, 10, 0, 0)
+            self.button_layout.setContentsMargins(0, 10, 0, self.height * 0.01)
 
         self.main_layout.addLayout(self.button_layout)
+
+        if self.start_button.text() == "PLAY":
+            self.progress_bar.setValue(100 * 100)
+            self.progress_bar.setFormat("")
+            self.progress_bar_label.setText("100%")
 
         # Set main layout
         central_widget = QWidget()
@@ -120,8 +147,10 @@ class Launcher(QMainWindow):
 
         latest_version, latest_assets = utils.get_latest_release()
         if utils.compare_versions(latest_version, version) == 1:
-            print("UPDATE")
-            print(latest_assets[0]["name"], latest_assets[0]["browser_download_url"])
+            logger.info("New launcher version available: " + latest_version)
+            logger.info(
+                latest_assets[0]["name"], latest_assets[0]["browser_download_url"]
+            )
             self.update_launcher(latest_assets[0])
 
         # Connect signals to slots
@@ -132,24 +161,28 @@ class Launcher(QMainWindow):
             QLabel#progress_label {
             color: white!important;
             margin-top: 0px;
-            margin-bottom: 10px;
             margin-left: 40px;
-            margin-right: 20px;
+
         }
 
         QCheckBox#autoplay {
             color: white!important;
+            margin-right: 5px;
         }
 
+        QLabel#autoplay_in_label {
+            color: white!important;
+            margin-right: 5px;
+        }
 
-        QProgressBar#progress {
-            background-color: #444444;
+        QProgressBar {
+            background-color: #444444!important;
             margin-left: 40px;
-            margin-right: 40px;
+            margin-right: 5px;
         }
 
-        QProgressBar#progress::chunk {
-            background-color: #0078d7;
+        QProgressBar::chunk {
+            background-color: #0078d7!important;
         }
 
         QPushButton#start {
@@ -195,9 +228,30 @@ class Launcher(QMainWindow):
         if self.autoplay.isChecked():
             self.configuration["autoplay"] = True
             if self.start_button.text() == "PLAY":
-                self.start_game()
+                self.remaining_seconds = 5  # set the initial value of remaining seconds
+                self.autoplay_timer = QTimer()
+                self.autoplay_timer.timeout.connect(
+                    self.update_countdown_label
+                )  # connect the timer to the update_countdown_label method
+                self.autoplay_in_label.setText(f"{self.remaining_seconds} seconds")
+                self.autoplay_timer.start(
+                    1000
+                )  # start the timer to fire every 1000ms (1 second)
         else:
             self.configuration["autoplay"] = False
+            if hasattr(self, "autoplay_timer"):
+                self.autoplay_timer.stop()
+                self.autoplay_in_label.setText("")
+
+    def update_countdown_label(self):
+        self.remaining_seconds -= 1  # decrement the remaining seconds
+        self.autoplay_in_label.setText(
+            f"{self.remaining_seconds} seconds"
+        )  # update the label text
+        if self.remaining_seconds == 0:
+            self.autoplay_timer.stop()  # stop the timer when the countdown is over
+            self.autoplay_in_label.setText("")
+            self.start_game()
 
     def create_top_bar(self, layout):
         self.official_site_link = QLabel(
@@ -231,8 +285,9 @@ class Launcher(QMainWindow):
         layout.addWidget(self.discord_site_link)
 
         self.source_code = QLabel(
-            "<p style='color:white; text-decoration: none; font-weight:500'>"
-            f"Version {version}</p>"
+            "<a style='color:white; text-decoration: none; font-weight:500' "
+            "href='https://github.com/chtheiss/duskhaven_launcher'>"
+            f"Version {version}</a>"
         )
         self.source_code.setObjectName("source_code")
         self.source_code.setCursor(QCursor(Qt.PointingHandCursor))
@@ -257,7 +312,7 @@ class Launcher(QMainWindow):
             QtCore.QSize(self.width * 0.04, self.width * 0.02)
         )
         self.minimize_button.setFlat(True)
-        self.minimize_button.clicked.connect(self.minimize_game)
+        self.minimize_button.clicked.connect(self.minimize_launcher)
         button_style = """
             QPushButton#minimize {
                 background-color: rgba(0, 0, 0, 0);
@@ -292,7 +347,7 @@ class Launcher(QMainWindow):
         )
         self.quit_button.setIconSize(QtCore.QSize(self.width * 0.02, self.width * 0.02))
         self.quit_button.setFlat(True)
-        self.quit_button.clicked.connect(self.quit_game)
+        self.quit_button.clicked.connect(self.quit_launcher)
         button_style = """
             QPushButton#close {
                 background-color: rgba(0, 0, 0, 0);
@@ -375,8 +430,7 @@ class Launcher(QMainWindow):
         else:
             self.start_button.setText("PLAY")
             self.start_button.clicked.connect(self.start_game)
-            if self.configuration.get("autoplay", False):
-                self.start_game()
+            self.set_autoplay()
 
     def create_installation_dialog(self):
         if self.check_first_time_user():
@@ -432,9 +486,14 @@ class Launcher(QMainWindow):
         self.task.resume(file)
 
     def complete_launcher_update(self):
-        old_version = "launcher.exe"
-        new_version = "launcher.exe.new"
-        temp_name = "temp_launcher.exe"
+        if sys.platform.startswith("linux"):
+            old_version = "launcher.bin"
+            new_version = "launcher.bin.new"
+        elif sys.platform.startswith("win32"):
+            old_version = "launcher.exe"
+            new_version = "launcher.exe.new"
+        temp_name = "temp_launcher"
+
         os.rename(old_version, temp_name)
         os.rename(new_version, old_version)
         self.configuration["just_updated"] = True
@@ -447,6 +506,7 @@ class Launcher(QMainWindow):
         QApplication.quit()
 
     def start_game(self):
+        logger.info("Starting game")
         subprocess.Popen(
             [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
         )
@@ -509,12 +569,14 @@ class Launcher(QMainWindow):
             self.start_button.setText("RESUME")
             self.task.pause()
 
-    def quit_game(self):
+    def quit_launcher(self):
+        logger.info("Quitting launcher")
         # Save configuration and quit the application
         self.save_configuration()
         QApplication.quit()
 
-    def minimize_game(self):
+    def minimize_launcher(self):
+        self.logger.info("Minimizing launcher")
         self.showMinimized()
 
     def adjust_size(self):
@@ -599,6 +661,7 @@ class Launcher(QMainWindow):
             self.task.stop()
             self.start_button.clicked.connect(self.start_game)
             self.start_button.setText("PLAY")
+            self.set_autoplay()
 
     def load_configuration(self):
         # Load the configuration from a JSON file
@@ -646,6 +709,10 @@ class Launcher(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    launcher = Launcher()
-    launcher.show()
+    try:
+        launcher = Launcher()
+        launcher.show()
+    except Exception as e:
+        logger.error(e)
+        sys.exit(1)
     sys.exit(app.exec())

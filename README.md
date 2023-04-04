@@ -18,11 +18,6 @@ The newest release is available [here](https://github.com/chtheiss/duskhaven_lau
 - Automatic resume of interrupted downloads
 - The launcher saves the version info of the different files and the installation folder in a `config.json`. The `launcher.exe` and `config.json` **must be in the same folder**.
 
-### Known Issues
-
-- Download speed and time tracking is a bit wonky when pausing/resuming a download
-- The Launcher cannot detect what version the customs files are if you have downloaded them manually. Hence it needs to redownload the custom files even if you have them already. For the WoW client itself we have MD5 hashes so that you do not need to redownload the original client itself.
-
 ### Build locally
 
 Install the requirements by running:
@@ -34,7 +29,15 @@ pip install nuitka
 
 Run the Nuitka:
 
+Windows:
+
 ```
 python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist --output-file=launcher.exe  pylauncher.py
+```
 
+Linux:
+
+```
+conda install libpython-static
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=dist --output-file=launcher.bin  pylauncher.py
 ```
