@@ -43,7 +43,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.0.6"
+version = "v0.0.8"
 
 
 class Launcher(QMainWindow):
