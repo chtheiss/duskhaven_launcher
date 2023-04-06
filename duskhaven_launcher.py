@@ -43,7 +43,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.0.7"
+version = "v0.0.6"
 
 
 class Launcher(QMainWindow):
@@ -488,6 +488,10 @@ class Launcher(QMainWindow):
     def update_launcher(self, asset):
         self.start_button.setText("UPDATING LAUNCHER")
         self.start_button.setEnabled(False)
+        self.autoplay.setCheckable(False)
+        self.autoplay.setChecked(False)
+        if hasattr(self, "autoplay_timer"):
+            self.autoplay_timer.stop()
         file = asset["name"] + ".new"
         self.create_runnable(
             url=asset["browser_download_url"], dest_path=file, paused_download_etag=None
@@ -497,16 +501,17 @@ class Launcher(QMainWindow):
 
     def complete_launcher_update(self):
         old_version = os.path.basename(__file__)
+        script_mode = False
+        if old_version.endswith(".py"):
+            script_mode = True
+        if script_mode:
+            old_version = f"{old_version.removesuffix('py')}exe"
+
         new_version = f"{old_version}.new"
         temp_name = "temp_launcher"
 
-        script_mode = False
-        try:
+        if not script_mode:
             os.rename(old_version, temp_name)
-        except FileNotFoundError:
-            script_mode = True
-            logger.info("Updating in script mode")
-
         os.rename(new_version, old_version)
         if not script_mode:
             self.configuration["just_updated"] = True

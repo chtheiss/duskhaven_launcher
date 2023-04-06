@@ -50,12 +50,12 @@ Run the Nuitka:
 Windows:
 
 ```
-python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist --output-file=launcher.exe  duskhaven_launcher.py
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist  duskhaven_launcher.py
 ```
 
 Linux:
 
 ```
 conda install libpython-static
-python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=dist --output-file=launcher.bin  duskhaven_launcher.py
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=dist  duskhaven_launcher.py
 ```
