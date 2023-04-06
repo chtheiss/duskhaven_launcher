@@ -412,15 +412,19 @@ class Launcher(QMainWindow):
             self.start_button.setFont(self.font)
 
         if self.check_first_time_user():
+            logger.info("Setting interaction button to INSTALL")
             self.start_button.setText("INSTALL")
             self.start_button.clicked.connect(self.start_install_game)
         elif self.configuration.get("install_in_progress", False):
+            logger.info("Setting interaction button to RESUME INSTALL")
             self.start_button.setText("RESUME INSTALL")
             self.start_button.clicked.connect(self.download_install_game)
         elif self.configuration.get("download_queue"):
+            logger.info("Setting interaction button to UPDATE")
             self.start_button.setText("UPDATE")
             self.start_button.clicked.connect(self.update_game)
         else:
+            logger.info("Setting interaction button to PLAY")
             self.start_button.setText("PLAY")
             self.start_button.clicked.connect(self.start_game)
             self.set_autoplay()
@@ -582,12 +586,14 @@ class Launcher(QMainWindow):
 
         status = self.check_wow_install()
         if status == "update":
+            logger.info("Game installed but requires updates.")
             self.start_button.setText("PAUSE")
             self.start_button.clicked.disconnect()
             self.start_button.clicked.connect(self.update_game)
             self.download_next_or_stop(None, None)
             return
         if status == "play":
+            logger.info("Game already up-to-date.")
             self.start_button.setText("PLAY")
             self.start_button.clicked.disconnect()
             self.start_button.clicked.connect(self.start_game)
@@ -714,6 +720,7 @@ class Launcher(QMainWindow):
                 self.start_button.clicked.disconnect()
                 self.start_button.clicked.connect(self.start_game)
                 self.start_button.setText("PLAY")
+                self.start_button.setEnabled(True)
                 return "play"
         return "install"
 
@@ -726,6 +733,7 @@ class Launcher(QMainWindow):
             self.configuration["installation_path"] = selected_directory
             self.installation_path_text.setText(selected_directory)
             self.save_configuration()
+            self.start_button.setEnabled(False)
             self.check_wow_install()
 
     def finish_base_install(self, install_successful):
@@ -743,12 +751,13 @@ class Launcher(QMainWindow):
         self.configuration["download_queue"].pop(0)
         self.save_configuration()
 
-        self.start_button.setEnabled(True)
-
         if not install_successful:
             self.progress_bar_label.setText("Installation Failed!")
             return
-        self.download_next_or_stop(None, None)
+
+        self.start_button.setEnabled(True)
+        self.start_button.clicked.connect(self.update_game)
+        self.update_game()
 
     def download_next_or_stop(
         self, dest_path: Optional[str] = None, etag: Optional[str] = None
@@ -770,6 +779,7 @@ class Launcher(QMainWindow):
             self.number_install_dots = 1
             self.install_label_timer = QTimer()
             self.start_button.setEnabled(False)
+            self.start_button.clicked.disconnect()
             self.install_label_timer.timeout.connect(self.set_installing_label)
             self.install_label_timer.start(1000)
             self.install_task = threads.InstallWoWTask(
