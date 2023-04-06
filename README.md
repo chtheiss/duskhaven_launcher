@@ -15,13 +15,26 @@ The newest release is available [here](https://github.com/chtheiss/duskhaven_lau
 - Download the WoW 3.3.5 client if it is not already downloaded and unpack it in the appropriate folder
 - Adjust the realmlist, remove cinematics and remove the original Wow.exe
 - Download/Update the custom files (patch-z, patch-5, patch-A and wow.exe) required to play on Duskhaven
-- Automatic resume of interrupted downloads
-- The launcher saves the version info of the different files and the installation folder in a `config.json`. The `launcher.exe` and `config.json` **must be in the same folder**.
+- **Pause/Resume** of interrupted downloads
+- Persistent Auto-play checkbox that starts the game automatically if no updates are required
+- Experimental support for **Mac/Linux**
+- Important links
+- Minimize and move
+- Tracking for download speed, file size, elapsed time, and time until download finished
+- The launcher can live outside the WoW folder (as long as it stays together with the config file)
 
-### Known Issues
+### Roadmap
 
-- Download speed and time tracking is a bit wonky when pausing/resuming a download
-- The Launcher cannot detect what version the customs files are if you have downloaded them manually. Hence it needs to redownload the custom files even if you have them already. For the WoW client itself we have MD5 hashes so that you do not need to redownload the original client itself.
+- Settings Tab to
+  - Change installation folder 📂 of the Client
+  - Clear Client Cache
+  - Clear Launcher Cache
+  - Open game directory
+  - Specify if the client zip file should be deleted after a successful installation (default behavior is removing it)
+- Checkbox to automatically delete WDB before starting the game
+- If possible:
+  - Securely save password and automatically login after starting the wow client
+  - Add optional download for HD files
 
 ### Build locally
 
@@ -34,7 +47,15 @@ pip install nuitka
 
 Run the Nuitka:
 
+Windows:
+
 ```
 python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist --output-file=launcher.exe  pylauncher.py
+```
 
+Linux:
+
+```
+conda install libpython-static
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=dist --output-file=launcher.bin  pylauncher.py
 ```
