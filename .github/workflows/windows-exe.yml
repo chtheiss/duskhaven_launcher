@@ -38,7 +38,7 @@ jobs:
         uses: Nuitka/Nuitka-Action@main
         with:
           nuitka-version: main
-          script-name: pylauncher.py
+          script-name: duskhaven_launcher.py
           onefile: true
           standalone: true
           enable-plugins: pyside6
