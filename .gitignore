@@ -134,6 +134,7 @@ config.json
 wow-client.zip
 *.part
 
-pylauncher.build/
-pylauncher.dist/
-pylauncher.onefile-build/
+duskhaven_launcher.build/
+duskhaven_launcher.dist/
+duskhaven_launcher.onefile-build/
+installation_test/

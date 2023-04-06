@@ -45,13 +45,10 @@ class InstallWoWTask(QThread):
         self.signals = InstallWoWTaskSignals()
 
     def run(self):
-        if not self.install_successful and self.install_folder.exists():
-            shutil.rmtree(self.install_folder)
-            self.install_folder.mkdir(parents=True, exist_ok=True)
-
         self.install_successful = utils.prepare_wow_folder(
             self.install_folder, self.wow_client_zip_path
         )
+        logger.info(f"Install successful: {self.install_successful}")
         self.signals.install_finished.emit(self.install_successful)
 
 

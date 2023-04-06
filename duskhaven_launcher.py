@@ -58,7 +58,6 @@ class Launcher(QMainWindow):
         self.create_background()
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
         self.setWindowIcon(QIcon(os.path.join(basedir, "images", "favicon.ico")))
-
         # Load configuration
         self.load_configuration()
 
@@ -249,12 +248,12 @@ class Launcher(QMainWindow):
             self.save_configuration()
 
     def set_installing_label(self):
-        self.progress_bar_label.setTex(
+        self.progress_bar_label.setText(
             f"Installing Base Game {self.number_install_dots * '.'}"
         )
-        if self.number_install_dots == 1:
-            self.number_install_dots = 3
-        self.number_install_dots -= 1
+        if self.number_install_dots == 3:
+            self.number_install_dots = 1
+        self.number_install_dots += 1
 
     def update_countdown_label(self):
         self.remaining_seconds -= 1  # decrement the remaining seconds
@@ -458,6 +457,7 @@ class Launcher(QMainWindow):
         return False
 
     def update_game(self):
+        logger.info("Updating game.")
         if not self.task:
             file = self.configuration["download_queue"][0]
             url = Config.LINKS[file]
@@ -496,12 +496,8 @@ class Launcher(QMainWindow):
         self.task.start()
 
     def complete_launcher_update(self):
-        if sys.platform.startswith("linux"):
-            old_version = "launcher.bin"
-            new_version = "launcher.bin.new"
-        elif sys.platform.startswith("win32"):
-            old_version = "launcher.exe"
-            new_version = "launcher.exe.new"
+        old_version = os.path.basename(__file__)
+        new_version = f"{old_version}.new"
         temp_name = "temp_launcher"
 
         script_mode = False
@@ -573,16 +569,26 @@ class Launcher(QMainWindow):
             self.configuration["installation_path"] = install_folder
             self.save_configuration()
 
-        if not self.configuration.get("install_in_progress", False):
-            status = self.check_wow_install()
-            if status == "update" or status == "play":
-                return
-            self.add_outdated_files_to_queue()
+        status = self.check_wow_install()
+        if status == "update":
+            self.start_button.setText("PAUSE")
+            self.download_next_or_stop(None, None)
+            return
+        if status == "play":
+            return
+
+        self.add_outdated_files_to_queue()
 
         download_queue = self.configuration.get("download_queue", [])
-        if "wow-client.zip" not in download_queue:
+        wow_zip_dest_path = pathlib.Path(install_folder) / "wow-client.zip"
+        if "wow-client.zip" not in download_queue and not wow_zip_dest_path.exists():
             self.configuration["download_queue"] = ["wow-client.zip"] + download_queue
             self.save_configuration()
+        else:
+            self.download_next_or_stop(
+                wow_zip_dest_path, download.fetch_etag(Config.LINKS["wow-client.zip"])
+            )
+            return
 
         if not self.task:
             self.start_button.setText("PAUSE")
@@ -670,11 +676,13 @@ class Launcher(QMainWindow):
                 self.installation_path_text.setVisible(False)
             # If any file needs update -> update
             if len(self.configuration["download_queue"]) > 0:
+                self.start_button.clicked.disconnect()
                 self.start_button.clicked.connect(self.update_game)
                 self.start_button.setText("UPDATE")
                 return "update"
             # All files up-to-date -> play
             else:
+                self.start_button.clicked.disconnect()
                 self.start_button.clicked.connect(self.start_game)
                 self.start_button.setText("PLAY")
                 return "play"
@@ -692,11 +700,25 @@ class Launcher(QMainWindow):
             self.check_wow_install()
 
     def finish_base_install(self, install_successful):
-        install_successful
-        self.task.quit()
-        self.task.wait()
+        if self.task:
+            self.task.quit()
+            self.task.wait()
+        if self.install_task:
+            self.install_task.quit()
+            self.install_task.wait()
+
         self.install_label_timer.stop()
+
+        download_queue = self.configuration.get("download_queue", [])
+        self.configuration["download_queue"] = download_queue
+        self.configuration["download_queue"].pop(0)
+        self.save_configuration()
+
         self.start_button.setEnabled(True)
+
+        if not install_successful:
+            self.progress_bar_label.setText("Installation Failed!")
+            return
         self.download_next_or_stop(None, None)
 
     def download_next_or_stop(
@@ -708,33 +730,28 @@ class Launcher(QMainWindow):
             file_versions[pathlib.Path(dest_path).name] = etag
             self.configuration["file_versions"] = file_versions
             self.configuration["paused_download_etag"] = None
+            self.configuration["download_queue"].pop(0)
             self.save_configuration()
 
-        self.task.quit()
-        self.task.wait()
+        if self.task:
+            self.task.quit()
+            self.task.wait()
 
-        if pathlib.Path(dest_path).name == "wow-client.zip":
-            self.number_install_dots = 3  # set the initial value of remaining seconds
+        if dest_path is not None and pathlib.Path(dest_path).name == "wow-client.zip":
+            self.number_install_dots = 1
             self.install_label_timer = QTimer()
             self.start_button.setEnabled(False)
-            self.install_label_timer.timeout.connect(
-                self.set_installing_label
-            )  # connect the timer to the update_countdown_label method
-            self.install_label_timer.start(
-                1000
-            )  # start the timer to fire every 1000ms (1 second)
-            install_task = threads.InstallWoWTask(
+            self.install_label_timer.timeout.connect(self.set_installing_label)
+            self.install_label_timer.start(1000)
+            self.install_task = threads.InstallWoWTask(
                 pathlib.Path(self.configuration["installation_path"]),
                 pathlib.Path(dest_path),
             )
-            install_task.install_finished.connect(self.finish_base_install)
-            install_task.start()
+            self.install_task.signals.install_finished.connect(self.finish_base_install)
+            self.install_task.start()
             return
 
         download_queue = self.configuration.get("download_queue", [])
-        self.configuration["download_queue"] = download_queue
-        self.configuration["download_queue"].pop(0)
-        self.save_configuration()
         if download_queue:
             file = download_queue[0]
             self.create_runnable(
@@ -748,6 +765,7 @@ class Launcher(QMainWindow):
             self.save_configuration()
             self.task.quit()
             self.task.wait()
+            self.start_button.clicked.disconnect()
             self.start_button.clicked.connect(self.start_game)
             self.start_button.setText("PLAY")
             self.set_autoplay()
@@ -797,11 +815,11 @@ class Launcher(QMainWindow):
 
 
 if __name__ == "__main__":
+    # try:
     app = QApplication(sys.argv)
-    try:
-        launcher = Launcher()
-        launcher.show()
-    except Exception as e:
-        logger.error(e)
-        sys.exit(1)
+    launcher = Launcher()
+    launcher.show()
+    # except Exception as e:
+    #    logger.error(e)
+    # sys.exit(1)
     sys.exit(app.exec())
