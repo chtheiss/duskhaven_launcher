@@ -486,6 +486,11 @@ class Launcher(QMainWindow):
         self.task.signals.update_config.connect(self.update_config)
 
     def update_launcher(self, asset):
+        if hasattr(self, "browse_button"):
+            self.browse_button.setVisible(False)
+            self.installation_path_label.setVisible(False)
+            self.installation_path_text.setVisible(False)
+
         self.start_button.setText("UPDATING LAUNCHER")
         self.start_button.setEnabled(False)
         self.autoplay.setCheckable(False)
