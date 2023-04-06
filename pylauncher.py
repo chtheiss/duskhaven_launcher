@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 import sys
 import time
+from typing import Optional
 
 from PySide6 import QtCore
 from PySide6.QtCore import QTimer
@@ -37,7 +38,7 @@ logging.basicConfig(
     filemode="a",
     format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
     datefmt="%H:%M:%S",
-    level=logging.DEBUG,
+    level=logging.INFO,
 )
 
 logger = logging.getLogger("Duskhaven Launcher")
@@ -48,6 +49,7 @@ version = "v0.0.7"
 class Launcher(QMainWindow):
     def __init__(self):
         super().__init__()
+        logger.info("Starting application")
 
         # Set window title and size
         self.setWindowTitle("Game Launcher")
@@ -65,12 +67,8 @@ class Launcher(QMainWindow):
             self.configuration["just_updated"] = False
             self.save_configuration()
 
-        self.task = threads.BackgroundTask()
-        self.task.progress_update.connect(self.update_progress)
-        self.task.progress_label_update.connect(self.update_progress_label)
-        self.task.finished_download.connect(self.download_next_or_stop)
-        self.task.finished_launcher_download.connect(self.complete_launcher_update)
-        self.task.start()
+        # Get the global QThreadPool instance
+        self.task = None
 
         # Create a font and set it as the label's font
         self.font = QFont()
@@ -103,6 +101,12 @@ class Launcher(QMainWindow):
         self.autoplay_in_label = QLabel("")
         self.progress_bar.setObjectName("autoplay_in_label")
         self.autoplay_in_label.setFont(self.font_small)
+        self.autoplay_in_label.setStyleSheet(
+            """
+            color: white!important;
+            margin-right: 5px;
+            """
+        )
 
         self.autoplay = QCheckBox()
         self.autoplay.setText("AUTO-PLAY")
@@ -121,6 +125,8 @@ class Launcher(QMainWindow):
         self.progress_bar_layout.addLayout(self.progress_bar_label_layout)
         self.progress_bar_layout.addWidget(self.progress_bar)
 
+        if "installation_path" in self.configuration:
+            self.add_outdated_files_to_queue()
         self.create_start_button()
         # Add widgets to layouts
         self.button_layout.addLayout(self.progress_bar_layout)
@@ -148,9 +154,10 @@ class Launcher(QMainWindow):
 
         latest_version, latest_assets = utils.get_latest_release()
         if utils.compare_versions(latest_version, version) == 1:
-            logger.info("New launcher version available: " + latest_version)
+            logger.info(f"New launcher version available: {latest_version}")
             logger.info(
-                latest_assets[0]["name"], latest_assets[0]["browser_download_url"]
+                f"Start downloading { latest_assets[0]['name']} "
+                f"from {latest_assets[0]['browser_download_url']}"
             )
             self.update_launcher(latest_assets[0])
 
@@ -167,11 +174,6 @@ class Launcher(QMainWindow):
         }
 
         QCheckBox#autoplay {
-            color: white!important;
-            margin-right: 5px;
-        }
-
-        QLabel#autoplay_in_label {
             color: white!important;
             margin-right: 5px;
         }
@@ -228,6 +230,7 @@ class Launcher(QMainWindow):
     def set_autoplay(self):
         if self.autoplay.isChecked():
             self.configuration["autoplay"] = True
+            self.save_configuration()
             if self.start_button.text() == "PLAY":
                 self.remaining_seconds = 5  # set the initial value of remaining seconds
                 self.autoplay_timer = QTimer()
@@ -243,6 +246,15 @@ class Launcher(QMainWindow):
             if hasattr(self, "autoplay_timer"):
                 self.autoplay_timer.stop()
                 self.autoplay_in_label.setText("")
+            self.save_configuration()
+
+    def set_installing_label(self):
+        self.progress_bar_label.setTex(
+            f"Installing Base Game {self.number_install_dots * '.'}"
+        )
+        if self.number_install_dots == 1:
+            self.number_install_dots = 3
+        self.number_install_dots -= 1
 
     def update_countdown_label(self):
         self.remaining_seconds -= 1  # decrement the remaining seconds
@@ -253,6 +265,10 @@ class Launcher(QMainWindow):
             self.autoplay_timer.stop()  # stop the timer when the countdown is over
             self.autoplay_in_label.setText("")
             self.start_game()
+
+    def update_config(self, key, value):
+        self.configuration[key] = value
+        self.save_configuration()
 
     def create_top_bar(self, layout):
         self.official_site_link = QLabel(
@@ -395,37 +411,14 @@ class Launcher(QMainWindow):
             self.start_button.setMinimumWidth(self.width * 0.2)
             self.start_button.setCursor(QCursor(Qt.PointingHandCursor))
             self.start_button.setFont(self.font)
+
         if self.check_first_time_user():
             self.start_button.setText("INSTALL")
             self.start_button.clicked.connect(self.install_game)
-            return
         elif self.configuration.get("install_in_progress", False):
-            self.start_button.setText("RESUME")
+            self.start_button.setText("RESUME INSTALL")
             self.start_button.clicked.connect(self.install_game)
-            return
-        install_folder = pathlib.Path(self.configuration["installation_path"])
-        dest_paths = [
-            install_folder / "wow.exe",
-            install_folder / "Data" / "patch-5.MPQ",
-            install_folder / "Data" / "patch-A.MPQ",
-            install_folder / "Data" / "patch-Z.mpq",
-        ]
-        for dest_path in dest_paths:
-            file = str(dest_path.name)
-            if dest_path.parent.name == "Data":
-                full_file = f"Data/{file}"
-            else:
-                full_file = file
-            url = Config.LINKS[full_file]
-            if (
-                download.file_requires_update(
-                    url, dest_path, self.configuration["file_versions"].get(file, "")
-                )
-                and full_file not in self.configuration["download_queue"]
-            ):
-                self.configuration["download_queue"].append(full_file)
-                self.save_configuration()
-        if self.configuration["download_queue"]:
+        elif self.configuration.get("download_queue"):
             self.start_button.setText("UPDATE")
             self.start_button.clicked.connect(self.update_game)
         else:
@@ -435,8 +428,6 @@ class Launcher(QMainWindow):
 
     def create_installation_dialog(self):
         if self.check_first_time_user():
-            self.configuration["download_queue"] = list(Config.LINKS.keys())
-            self.save_configuration()
             self.installation_path_label = QLabel(
                 "<p style='color:white;'>Installation Path: </p>"
             )
@@ -467,24 +458,42 @@ class Launcher(QMainWindow):
         return False
 
     def update_game(self):
-        if self.task.paused:
-            self.start_button.setText("PAUSE")
+        if not self.task:
             file = self.configuration["download_queue"][0]
-            self.task.url = Config.LINKS[file]
-            self.task.resume(
-                pathlib.Path(self.configuration["installation_path"]) / file
+            url = Config.LINKS[file]
+            self.create_runnable(
+                url=url,
+                dest_path=pathlib.Path(self.configuration["installation_path"]) / file,
+                paused_download_etag=self.configuration.get("paused_download_etag"),
             )
+            self.task.start()
+            self.start_button.setText("PAUSE")
+        elif self.task.paused:
+            self.start_button.setText("PAUSE")
+            self.task.resume(self.configuration.get("paused_download_etag"))
         else:
             self.start_button.setText("RESUME")
             self.task.pause()
 
+    def create_runnable(self, *args, **kwargs):
+        self.task = threads.BackgroundTask(*args, **kwargs)
+        self.task.signals.progress_update.connect(self.update_progress)
+        self.task.signals.progress_label_update.connect(self.update_progress_label)
+        self.task.signals.finished_download.connect(self.download_next_or_stop)
+        self.task.signals.finished_launcher_download.connect(
+            self.complete_launcher_update
+        )
+        self.task.signals.update_config.connect(self.update_config)
+
     def update_launcher(self, asset):
-        self.start_button.setText("UPDATING")
+        self.start_button.setText("UPDATING LAUNCHER")
         self.start_button.setEnabled(False)
         file = asset["name"] + ".new"
+        self.create_runnable(
+            url=asset["browser_download_url"], dest_path=file, paused_download_etag=None
+        )
         self.task.total_size = asset["size"]
-        self.task.url = asset["browser_download_url"]
-        self.task.resume(file)
+        self.task.start()
 
     def complete_launcher_update(self):
         if sys.platform.startswith("linux"):
@@ -495,15 +504,23 @@ class Launcher(QMainWindow):
             new_version = "launcher.exe.new"
         temp_name = "temp_launcher"
 
-        os.rename(old_version, temp_name)
+        script_mode = False
+        try:
+            os.rename(old_version, temp_name)
+        except FileNotFoundError:
+            script_mode = True
+            logger.info("Updating in script mode")
+
         os.rename(new_version, old_version)
-        self.configuration["just_updated"] = True
+        if not script_mode:
+            self.configuration["just_updated"] = True
         self.save_configuration()
 
-        time.sleep(1)
-        subprocess.Popen([old_version])
+        time.sleep(0.5)
+        logger.info(f"Starting WoW: {str(pathlib.Path(basedir) / old_version)}")
+        subprocess.Popen(str(pathlib.Path(basedir) / old_version))
         # Kill the old version
-        time.sleep(1)
+        time.sleep(0.5)
         QApplication.quit()
 
     def start_game(self):
@@ -513,59 +530,76 @@ class Launcher(QMainWindow):
         )
         QApplication.quit()
 
+    def add_outdated_files_to_queue(self):
+        install_folder = pathlib.Path(self.configuration["installation_path"])
+        donwload_queue = self.configuration.get("download_queue", [])
+        dest_paths = [
+            install_folder / "wow.exe",
+            install_folder / "Data" / "patch-5.MPQ",
+            install_folder / "Data" / "patch-A.MPQ",
+            install_folder / "Data" / "patch-Z.mpq",
+        ]
+        for dest_path in dest_paths:
+            file = str(dest_path.name)
+            if dest_path.parent.name == "Data":
+                full_file = f"Data/{file}"
+            else:
+                full_file = file
+            url = Config.LINKS[full_file]
+            if (
+                download.file_requires_update(
+                    url,
+                    dest_path,
+                    self.configuration.get("file_versions", {}).get(file, ""),
+                )
+                and full_file not in donwload_queue
+            ):
+                donwload_queue.append(full_file)
+        self.configuration["download_queue"] = donwload_queue
+        self.save_configuration()
+
     def install_game(self):
+        if hasattr(self, "browse_button"):
+            self.browse_button.setVisible(False)
+            self.installation_path_label.setVisible(False)
+            self.installation_path_text.setVisible(False)
         # Did not attempt to install yet and user clicked install
-        dest_path = self.configuration["download_queue"][0]
         if hasattr(self, "installation_path_text"):
             install_folder = self.installation_path_text.text()
         else:
             install_folder = self.configuration["installation_path"]
-        if dest_path == "wow-client.zip" and utils.check_wow_install(
-            pathlib.Path(install_folder)
-        ):
-            self.browse_button.setVisible(False)
-            self.installation_path_label.setVisible(False)
-            self.installation_path_text.setVisible(False)
-            self.button_layout.setContentsMargins(0, 0, 0, 0)
-            index = self.main_layout.indexOf(self.button_layout)
-            self.main_layout.insertLayout(index - 1, self.progress_bar_label_layout)
 
-            self.configuration["download_queue"].pop(0)
-            self.configuration["installation_path"] = self.installation_path_text.text()
-            self.configuration["install_in_progress"] = False
-            self.configuration["file_versions"] = {}
+        if "installation_path" not in self.configuration:
+            self.configuration["installation_path"] = install_folder
             self.save_configuration()
-            self.create_start_button()
-            return
-        self.task.url = Config.LINKS[dest_path]
-        if (
-            not self.configuration.get("install_in_progress", False)
-            and self.task.paused
-        ):
-            self.browse_button.setVisible(False)
-            self.installation_path_label.setVisible(False)
-            self.installation_path_text.setVisible(False)
-            self.button_layout.setContentsMargins(0, 0, 0, 0)
-            index = self.main_layout.indexOf(self.button_layout)
-            self.main_layout.insertWidget(index - 1, self.progress_bar_label)
+
+        if not self.configuration.get("install_in_progress", False):
+            status = self.check_wow_install()
+            if status == "update" or status == "play":
+                return
+            self.add_outdated_files_to_queue()
+
+        download_queue = self.configuration.get("download_queue", [])
+        if "wow-client.zip" not in download_queue:
+            self.configuration["download_queue"] = ["wow-client.zip"] + download_queue
+            self.save_configuration()
+
+        if not self.task:
             self.start_button.setText("PAUSE")
-            self.configuration["installation_path"] = self.installation_path_text.text()
-            self.save_configuration()
-
-            install_folder = pathlib.Path(self.configuration["installation_path"])
-            install_folder.mkdir(parents=True, exist_ok=True)
             self.configuration["install_in_progress"] = True
             self.save_configuration()
-
-            self.task.resume(
-                pathlib.Path(self.configuration["installation_path"]) / dest_path
+            pathlib.Path(install_folder).mkdir(parents=True, exist_ok=True)
+            file = self.configuration["download_queue"][0]
+            url = Config.LINKS[file]
+            self.create_runnable(
+                url=url,
+                dest_path=pathlib.Path(self.configuration["installation_path"]) / file,
+                paused_download_etag=self.configuration.get("paused_download_etag"),
             )
-        # Installation in progress and user clicked Resume
+            self.task.start()
         elif self.task.paused:
             self.start_button.setText("PAUSE")
-            self.task.resume(
-                pathlib.Path(self.configuration["installation_path"]) / dest_path
-            )
+            self.task.resume(self.configuration.get("paused_download_etag"))
         else:
             self.start_button.setText("RESUME")
             self.task.pause()
@@ -574,10 +608,13 @@ class Launcher(QMainWindow):
         logger.info("Quitting launcher")
         # Save configuration and quit the application
         self.save_configuration()
+        if self.task:
+            self.task.quit()
+            self.task.wait()
         QApplication.quit()
 
     def minimize_launcher(self):
-        self.logger.info("Minimizing launcher")
+        logger.info("Minimizing launcher")
         self.showMinimized()
 
     def adjust_size(self):
@@ -598,7 +635,6 @@ class Launcher(QMainWindow):
         super().resizeEvent(event)
         self.height = event.size().height()
         self.width = event.size().width()
-        # self.adjust_size()
 
     @property
     def height(self):
@@ -622,6 +658,28 @@ class Launcher(QMainWindow):
         # Check if this is the first time the user has run the launcher
         return not self.configuration.get("installation_path")
 
+    def check_wow_install(self):
+        # If WoW already installed -> update or play
+        if utils.check_wow_install(
+            pathlib.Path(self.configuration["installation_path"])
+        ):
+            self.add_outdated_files_to_queue()
+            if hasattr(self, "browse_button"):
+                self.browse_button.setVisible(False)
+                self.installation_path_label.setVisible(False)
+                self.installation_path_text.setVisible(False)
+            # If any file needs update -> update
+            if len(self.configuration["download_queue"]) > 0:
+                self.start_button.clicked.connect(self.update_game)
+                self.start_button.setText("UPDATE")
+                return "update"
+            # All files up-to-date -> play
+            else:
+                self.start_button.clicked.connect(self.start_game)
+                self.start_button.setText("PLAY")
+                return "play"
+        return "install"
+
     def show_installation_dialog(self):
         # Prompt the user to select the installation path
         selected_directory = QFileDialog.getExistingDirectory(
@@ -631,19 +689,47 @@ class Launcher(QMainWindow):
             self.configuration["installation_path"] = selected_directory
             self.installation_path_text.setText(selected_directory)
             self.save_configuration()
+            self.check_wow_install()
 
-    def download_next_or_stop(self, dest_path, etag):
+    def finish_base_install(self, install_successful):
+        install_successful
+        self.task.quit()
+        self.task.wait()
+        self.install_label_timer.stop()
+        self.start_button.setEnabled(True)
+        self.download_next_or_stop(None, None)
+
+    def download_next_or_stop(
+        self, dest_path: Optional[str] = None, etag: Optional[str] = None
+    ):
         # Download the next file in the queue or stop the download
-        file_versions = self.configuration.get("file_versions", {})
-        file_versions[pathlib.Path(dest_path).name] = etag
-        self.configuration["file_versions"] = file_versions
+        if dest_path and etag:
+            file_versions = self.configuration.get("file_versions", {})
+            file_versions[pathlib.Path(dest_path).name] = etag
+            self.configuration["file_versions"] = file_versions
+            self.configuration["paused_download_etag"] = None
+            self.save_configuration()
+
+        self.task.quit()
+        self.task.wait()
 
         if pathlib.Path(dest_path).name == "wow-client.zip":
-            utils.prepare_wow_folder(
+            self.number_install_dots = 3  # set the initial value of remaining seconds
+            self.install_label_timer = QTimer()
+            self.start_button.setEnabled(False)
+            self.install_label_timer.timeout.connect(
+                self.set_installing_label
+            )  # connect the timer to the update_countdown_label method
+            self.install_label_timer.start(
+                1000
+            )  # start the timer to fire every 1000ms (1 second)
+            install_task = threads.InstallWoWTask(
                 pathlib.Path(self.configuration["installation_path"]),
                 pathlib.Path(dest_path),
             )
-        self.save_configuration()
+            install_task.install_finished.connect(self.finish_base_install)
+            install_task.start()
+            return
 
         download_queue = self.configuration.get("download_queue", [])
         self.configuration["download_queue"] = download_queue
@@ -651,15 +737,17 @@ class Launcher(QMainWindow):
         self.save_configuration()
         if download_queue:
             file = download_queue[0]
-            self.task.url = Config.LINKS[file]
-            self.task.dest_path = (
-                pathlib.Path(self.configuration["installation_path"]) / file
+            self.create_runnable(
+                url=Config.LINKS[file],
+                dest_path=pathlib.Path(self.configuration["installation_path"]) / file,
+                paused_download_etag=self.configuration.get("paused_download_etag"),
             )
             self.task.start()
         else:
             self.configuration["install_in_progress"] = False
             self.save_configuration()
-            self.task.stop()
+            self.task.quit()
+            self.task.wait()
             self.start_button.clicked.connect(self.start_game)
             self.start_button.setText("PLAY")
             self.set_autoplay()
@@ -678,7 +766,7 @@ class Launcher(QMainWindow):
     def save_configuration(self):
         # Save the configuration to a JSON file
         with open("config.json", "w") as f:
-            json.dump(self.configuration, f)
+            json.dump(self.configuration, f, indent=2)
 
     def update_progress_label(self, info):
         self.progress_bar_label.setText(info)

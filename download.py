@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 import shutil
@@ -9,6 +10,16 @@ import requests
 
 import threads
 import utils
+
+logging.basicConfig(
+    filename="launcher.log",
+    filemode="a",
+    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger("Download")
 
 
 def fetch_etag(url):
@@ -62,35 +73,39 @@ def fetch_size(url):
 
 
 def check_etag(url, etag):
-    if etag == fetch_etag(url):
-        return True
-    return False
+    return etag == fetch_etag(url)
 
 
 def file_requires_update(url, dest_path, etag):
-    print(f"Checking {dest_path}...", flush=True)
+    logger.info(f"Checking {dest_path}...")
     etag_up_to_date = check_etag(url, etag)
     path_exists = dest_path is not None and dest_path.exists()
-    if not etag_up_to_date and path_exists:
+    if not path_exists:
+        logger.info(f"{dest_path} does not exist yet...")
+        return True
+
+    if etag_up_to_date:
+        logger.info(f"{dest_path} etag up-to-date...")
+        return False
+    else:
         modified = datetime.fromtimestamp(dest_path.stat().st_mtime, tz=timezone.utc)
         remote_modified = fetch_file_modified_time(url)
         if modified < remote_modified:
+            logger.info(f"Remote for {dest_path} was modified...")
             return True
         else:
+            logger.info(f"Remote for {dest_path} was NOT modified...")
             return False
-    if etag_up_to_date and path_exists:
-        return False
-    return True
 
 
 def download_or_update_file(url, local_filename, info, dest_path=None):
-    print(f"Checking {local_filename}...", flush=True)
+    logger.info(f"Checking {local_filename}...")
     etag_up_to_date = check_etag(url, info, f"{local_filename}-etag")
     path_exists = dest_path is not None and dest_path.exists()
     if etag_up_to_date and path_exists:
-        print(f"{local_filename} already up-to-date", flush=True)
+        logger.info(f"{local_filename} already up-to-date")
     else:
-        print(f"{local_filename} outdated or does not exist.")
+        logger.info(f"{local_filename} outdated or does not exist.")
         download_file(url, local_filename, dest_path)
 
 
@@ -117,10 +132,10 @@ def download_file(url, local_filename, dest_path=None):
     headers = {}
     if download_path.exists():
         file_size = os.path.getsize(download_path)
-        print(f"Resuming download of {local_filename}", flush=True)
-        print(f"File size: {file_size}", flush=True)
-        print(f"Total size: {total_size}", flush=True)
-        print(f"Range: bytes={file_size}-{total_size}", flush=True)
+        logger.info(f"Resuming download of {local_filename}")
+        logger.info(f"File size: {file_size}")
+        logger.info(f"Total size: {total_size}")
+        logger.info(f"Range: bytes={file_size}-{total_size}")
         headers = {"Range": f"bytes={file_size}-{total_size}"}
         mode = "ab"
     else:
@@ -137,7 +152,7 @@ def download_file(url, local_filename, dest_path=None):
         signal.signal(signal.SIGINT, signal_handler)
 
         progress_thread.start()
-        print(f"Start downloading {local_filename}", flush=True)
+        logger.info(f"Start downloading {local_filename}")
         with open(download_path, mode) as file:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
