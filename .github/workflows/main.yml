@@ -4,7 +4,9 @@ name: Build-All-Platforms
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: ["main"]
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -22,27 +24,25 @@ jobs:
       - name: Check-out repository
         uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Install Dependencies
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10" # Version range or exact version of a Python version to use, using SemVer's version range syntax
           architecture: "x64" # optional x64 or x86. Defaults to x64 if not specified
           cache: "pip"
-          cache-dependency-path: |
-            **/requirements*.txt
-
-      - name: Install Dependencies
-        run: pip install -r requirements.txt
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Build Executable
         uses: Nuitka/Nuitka-Action@main
         with:
-          nuitka-version: main
           script-name: duskhaven_launcher.py
-          onefile: true
-          standalone: true
           enable-plugins: pyside6
+          standalone: true
+          onefile: true
           include-data-dir: images=images
+          disable-console: true
           windows-icon-from-ico: images/favicon.ico
 
       - name: Upload Artifacts
