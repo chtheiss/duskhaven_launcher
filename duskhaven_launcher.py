@@ -43,7 +43,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.0.8"
+version = "v0.0.9"
 
 
 class Launcher(QMainWindow):
@@ -62,7 +62,9 @@ class Launcher(QMainWindow):
         self.load_configuration()
 
         if self.configuration.get("just_updated", False):
-            os.remove("temp_launcher")
+            temp_file = pathlib.Path("temp_launcher")
+            if temp_file.exists():
+                temp_file.unlink()
             self.configuration["just_updated"] = False
             self.save_configuration()
 
@@ -508,29 +510,40 @@ class Launcher(QMainWindow):
         self.task.total_size = asset["size"]
         self.task.start()
 
-    def complete_launcher_update(self):
-        old_version = os.path.basename(__file__)
-        script_mode = False
-        if old_version.endswith(".py"):
-            script_mode = True
-        if script_mode:
-            old_version = f"{old_version.removesuffix('py')}exe"
+    def complete_launcher_update(self, new_version_path):
+        if getattr(sys, "frozen", False):
+            # The application is frozen.
+            executable_path = pathlib.Path(sys.executable)
+        else:
+            # The application is not frozen.
+            # We assume the script is being executed from the command line.
+            executable_path = pathlib.Path(sys.argv[0])
 
-        new_version = f"{old_version}.new"
+        logger.info(f"Name of current launcher: {executable_path}")
+
+        new_version_path = pathlib.Path(new_version_path)
+
         temp_name = "temp_launcher"
+        try:
+            executable_path.rename(executable_path.parent / temp_name)
+            time.sleep(1)
+        except Exception as e:
+            logger.error(e)
+        try:
+            new_version_path.rename(executable_path)
+            time.sleep(1)
+        except Exception as e:
+            logger.error(e)
 
-        if not script_mode:
-            os.rename(old_version, temp_name)
-        os.rename(new_version, old_version)
-        if not script_mode:
-            self.configuration["just_updated"] = True
+        self.configuration["just_updated"] = True
         self.save_configuration()
 
-        time.sleep(0.5)
-        logger.info(f"Starting WoW: {str(pathlib.Path(basedir) / old_version)}")
-        subprocess.Popen(str(pathlib.Path(basedir) / old_version))
-        # Kill the old version
-        time.sleep(0.5)
+        time.sleep(2)
+        logger.info(f"Starting Launcher: {executable_path}")
+        try:
+            subprocess.Popen(str(executable_path), shell=True).wait()
+        except Exception as e:
+            logger.error(e)
         QApplication.quit()
 
     def start_game(self):
@@ -650,6 +663,7 @@ class Launcher(QMainWindow):
         # Save configuration and quit the application
         self.save_configuration()
         if self.task:
+            logger.info("Closing remaining tasks.")
             self.task.quit()
             self.task.wait()
         QApplication.quit()

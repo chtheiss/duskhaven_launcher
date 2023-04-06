@@ -56,7 +56,7 @@ class BackgroundTaskSignals(QObject):
     progress_update = Signal(int)
     progress_label_update = Signal(str)
     finished_download = Signal(str, str)
-    finished_launcher_download = Signal()
+    finished_launcher_download = Signal(str)
     update_config = Signal(str, str)
 
 
@@ -163,7 +163,7 @@ class BackgroundTask(QThread):
 
         if self.etag is None:
             logger.info("Launcher download finished.")
-            self.signals.finished_launcher_download.emit()
+            self.signals.finished_launcher_download.emit(str(self.dest_path))
         else:
             logger.info(f"{self.dest_path} download finished.")
             self.signals.finished_download.emit(str(self.dest_path), etag)
