@@ -162,8 +162,10 @@ class BackgroundTask(QThread):
         etag = download.fetch_etag(self.url)
 
         if self.etag is None:
+            logger.info("Launcher download finished.")
             self.signals.finished_launcher_download.emit()
         else:
+            logger.info(f"{self.dest_path} download finished.")
             self.signals.finished_download.emit(str(self.dest_path), etag)
 
     def pause(self):
