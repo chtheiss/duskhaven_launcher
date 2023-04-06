@@ -413,10 +413,10 @@ class Launcher(QMainWindow):
 
         if self.check_first_time_user():
             self.start_button.setText("INSTALL")
-            self.start_button.clicked.connect(self.install_game)
+            self.start_button.clicked.connect(self.start_install_game)
         elif self.configuration.get("install_in_progress", False):
             self.start_button.setText("RESUME INSTALL")
-            self.start_button.clicked.connect(self.install_game)
+            self.start_button.clicked.connect(self.download_install_game)
         elif self.configuration.get("download_queue"):
             self.start_button.setText("UPDATE")
             self.start_button.clicked.connect(self.update_game)
@@ -564,7 +564,8 @@ class Launcher(QMainWindow):
         self.configuration["download_queue"] = donwload_queue
         self.save_configuration()
 
-    def install_game(self):
+    def start_install_game(self):
+        logger.info("Start install game")
         if hasattr(self, "browse_button"):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
@@ -582,29 +583,51 @@ class Launcher(QMainWindow):
         status = self.check_wow_install()
         if status == "update":
             self.start_button.setText("PAUSE")
+            self.start_button.clicked.disconnect()
+            self.start_button.clicked.connect(self.update_game)
             self.download_next_or_stop(None, None)
             return
         if status == "play":
+            self.start_button.setText("PLAY")
+            self.start_button.clicked.disconnect()
+            self.start_button.clicked.connect(self.start_game)
             return
-
-        self.add_outdated_files_to_queue()
 
         download_queue = self.configuration.get("download_queue", [])
         wow_zip_dest_path = pathlib.Path(install_folder) / "wow-client.zip"
         if "wow-client.zip" not in download_queue and not wow_zip_dest_path.exists():
             self.configuration["download_queue"] = ["wow-client.zip"] + download_queue
             self.save_configuration()
-        else:
-            self.download_next_or_stop(
-                wow_zip_dest_path, download.fetch_etag(Config.LINKS["wow-client.zip"])
-            )
-            return
 
+        self.add_outdated_files_to_queue()
+        self.download_install_game()
+        self.start_button.setText("PAUSE")
+        self.start_button.clicked.disconnect()
+        self.start_button.clicked.connect(self.pause_install_game)
+
+    def pause_install_game(self):
+        logger.info("Pause install game")
+        self.start_button.setText("RESUME")
+        self.start_button.clicked.disconnect()
+        self.start_button.clicked.connect(self.resume_install_game)
+        self.task.pause()
+
+    def resume_install_game(self):
+        logger.info("Resume install game")
+        self.start_button.setText("PAUSE")
+        self.start_button.clicked.disconnect()
+        self.start_button.clicked.connect(self.pause_install_game)
+        self.task.resume(self.configuration.get("paused_download_etag"))
+
+    def download_install_game(self):
+        logger.info("Download install game")
         if not self.task:
             self.start_button.setText("PAUSE")
             self.configuration["install_in_progress"] = True
             self.save_configuration()
-            pathlib.Path(install_folder).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(self.configuration["installation_path"]).mkdir(
+                parents=True, exist_ok=True
+            )
             file = self.configuration["download_queue"][0]
             url = Config.LINKS[file]
             self.create_runnable(
@@ -613,12 +636,8 @@ class Launcher(QMainWindow):
                 paused_download_etag=self.configuration.get("paused_download_etag"),
             )
             self.task.start()
-        elif self.task.paused:
-            self.start_button.setText("PAUSE")
-            self.task.resume(self.configuration.get("paused_download_etag"))
-        else:
-            self.start_button.setText("RESUME")
-            self.task.pause()
+            self.start_button.clicked.disconnect()
+            self.start_button.clicked.connect(self.pause_install_game)
 
     def quit_launcher(self):
         logger.info("Quitting launcher")
