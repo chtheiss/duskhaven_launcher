@@ -7,6 +7,8 @@ import zipfile
 
 import requests
 
+from config import Config
+
 logging.basicConfig(
     filename="launcher.log",
     filemode="a",
@@ -94,11 +96,27 @@ def prepare_wow_folder(install_folder, wow_client_zip_path):
     with open(realm_list_path, "w") as realm_list_file:
         realm_list_file.write("set realmlist duskhaven.servegame.com")
 
+    logger.info("Changing WTF config")
+    create_wtf_config(install_folder)
+
     # Remove the zip file at the end
     if successful:
         pass  # os.remove(wow_client_zip_path)
 
     return successful
+
+
+def create_wtf_config(install_folder):
+    wtf_config_path = install_folder / "WTF" / "Config.wtf"
+    if not wtf_config_path.exists():
+        wtf_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(wtf_config_path, "w") as wtf_config_file:
+            wtf_config_file.writelines(
+                [
+                    f'SET {key} "{value}"\n'
+                    for key, value in Config.WOW_WTF_CONFIG.items()
+                ]
+            )
 
 
 def compare_versions(v1, v2):
