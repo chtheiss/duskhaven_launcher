@@ -160,7 +160,7 @@ class Launcher(QMainWindow):
                 f"Start downloading { latest_assets[0]['name']} "
                 f"from {latest_assets[0]['browser_download_url']}"
             )
-            self.update_launcher(latest_assets[0])
+            self.update_launcher(latest_assets)
 
         # Connect signals to slots
 
@@ -491,7 +491,7 @@ class Launcher(QMainWindow):
         )
         self.task.signals.update_config.connect(self.update_config)
 
-    def update_launcher(self, asset):
+    def update_launcher(self, assets):
         if hasattr(self, "browse_button"):
             self.browse_button.setVisible(False)
             self.installation_path_label.setVisible(False)
@@ -503,6 +503,22 @@ class Launcher(QMainWindow):
         self.autoplay.setChecked(False)
         if hasattr(self, "autoplay_timer"):
             self.autoplay_timer.stop()
+
+        if getattr(sys, "frozen", False):
+            executable_path = pathlib.Path(sys.executable)
+        else:
+            executable_path = pathlib.Path(sys.argv[0])
+
+        possible_assets = [
+            asset for asset in assets if asset.endswith(executable_path.suffix)
+        ]
+        if len(possible_assets) == 0:
+            logger.warning("Changed file extension!")
+        elif len(possible_assets) > 1:
+            logger.warning("Found multiple assets")
+
+        asset = possible_assets[0]
+
         file = asset["name"] + ".new"
         self.create_runnable(
             url=asset["browser_download_url"], dest_path=file, paused_download_etag=None
