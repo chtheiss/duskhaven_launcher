@@ -254,7 +254,7 @@ class Launcher(QMainWindow):
             f"Installing Base Game {self.number_install_dots * '.'}"
         )
         if self.number_install_dots == 3:
-            self.number_install_dots = 1
+            self.number_install_dots = 0
         self.number_install_dots += 1
 
     def update_countdown_label(self):
@@ -617,12 +617,15 @@ class Launcher(QMainWindow):
         if "wow-client.zip" not in download_queue and not wow_zip_dest_path.exists():
             self.configuration["download_queue"] = ["wow-client.zip"] + download_queue
             self.save_configuration()
-
         self.add_outdated_files_to_queue()
-        self.download_install_game()
-        self.start_button.setText("PAUSE")
-        self.start_button.clicked.disconnect()
-        self.start_button.clicked.connect(self.pause_install_game)
+
+        if wow_zip_dest_path.exists():
+            self.start_install_task(wow_zip_dest_path)
+        else:
+            self.download_install_game()
+            self.start_button.setText("PAUSE")
+            self.start_button.clicked.disconnect()
+            self.start_button.clicked.connect(self.pause_install_game)
 
     def pause_install_game(self):
         logger.info("Pause install game")
@@ -728,6 +731,7 @@ class Launcher(QMainWindow):
                 self.start_button.clicked.disconnect()
                 self.start_button.clicked.connect(self.update_game)
                 self.start_button.setText("UPDATE")
+                self.start_button.setEnabled(True)
                 return "update"
             # All files up-to-date -> play
             else:
@@ -736,6 +740,8 @@ class Launcher(QMainWindow):
                 self.start_button.setText("PLAY")
                 self.start_button.setEnabled(True)
                 return "play"
+
+        self.start_button.setEnabled(True)
         return "install"
 
     def show_installation_dialog(self):
@@ -758,7 +764,8 @@ class Launcher(QMainWindow):
             self.install_task.quit()
             self.install_task.wait()
 
-        self.install_label_timer.stop()
+        if hasattr(self, "install_label_timer"):
+            self.install_label_timer.stop()
 
         download_queue = self.configuration.get("download_queue", [])
         self.configuration["download_queue"] = download_queue
@@ -772,6 +779,20 @@ class Launcher(QMainWindow):
         self.start_button.setEnabled(True)
         self.start_button.clicked.connect(self.update_game)
         self.update_game()
+
+    def start_install_task(self, dest_path):
+        self.number_install_dots = 1
+        self.install_label_timer = QTimer()
+        self.start_button.setEnabled(False)
+        self.start_button.clicked.disconnect()
+        self.install_label_timer.timeout.connect(self.set_installing_label)
+        self.install_label_timer.start(1000)
+        self.install_task = threads.InstallWoWTask(
+            pathlib.Path(self.configuration["installation_path"]),
+            pathlib.Path(dest_path),
+        )
+        self.install_task.signals.install_finished.connect(self.finish_base_install)
+        self.install_task.start()
 
     def download_next_or_stop(
         self, dest_path: Optional[str] = None, etag: Optional[str] = None
@@ -790,18 +811,7 @@ class Launcher(QMainWindow):
             self.task.wait()
 
         if dest_path is not None and pathlib.Path(dest_path).name == "wow-client.zip":
-            self.number_install_dots = 1
-            self.install_label_timer = QTimer()
-            self.start_button.setEnabled(False)
-            self.start_button.clicked.disconnect()
-            self.install_label_timer.timeout.connect(self.set_installing_label)
-            self.install_label_timer.start(1000)
-            self.install_task = threads.InstallWoWTask(
-                pathlib.Path(self.configuration["installation_path"]),
-                pathlib.Path(dest_path),
-            )
-            self.install_task.signals.install_finished.connect(self.finish_base_install)
-            self.install_task.start()
+            self.start_install_task(dest_path)
             return
 
         download_queue = self.configuration.get("download_queue", [])

@@ -96,7 +96,7 @@ def prepare_wow_folder(install_folder, wow_client_zip_path):
 
     # Remove the zip file at the end
     if successful:
-        os.remove(wow_client_zip_path)
+        pass  # os.remove(wow_client_zip_path)
 
     return successful
 
