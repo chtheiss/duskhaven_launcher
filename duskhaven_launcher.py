@@ -156,10 +156,6 @@ class Launcher(QMainWindow):
         latest_version, latest_assets = utils.get_latest_release()
         if utils.compare_versions(latest_version, version) == 1:
             logger.info(f"New launcher version available: {latest_version}")
-            logger.info(
-                f"Start downloading { latest_assets[0]['name']} "
-                f"from {latest_assets[0]['browser_download_url']}"
-            )
             self.update_launcher(latest_assets)
 
         # Connect signals to slots
@@ -510,7 +506,7 @@ class Launcher(QMainWindow):
             executable_path = pathlib.Path(sys.argv[0])
 
         possible_assets = [
-            asset for asset in assets if asset.endswith(executable_path.suffix)
+            asset for asset in assets if asset["name"].endswith(executable_path.suffix)
         ]
         if len(possible_assets) == 0:
             logger.warning("Changed file extension!")
@@ -518,6 +514,11 @@ class Launcher(QMainWindow):
             logger.warning("Found multiple assets")
 
         asset = possible_assets[0]
+
+        logger.info(
+            f"Start downloading {asset['name']} "
+            f"from {asset['browser_download_url']}"
+        )
 
         file = asset["name"] + ".new"
         self.create_runnable(
