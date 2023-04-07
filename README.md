@@ -30,7 +30,7 @@ The newest release is available [here](https://github.com/chtheiss/duskhaven_lau
   - Clear Client Cache
   - Clear Launcher Cache
   - Open game directory
-  - Specify if the client zip file should be deleted after a successful installation (default behavior is removing it)
+  - Specify if the client zip file should be deleted after a successful installation (default behavior is **not** removing it)
 - Checkbox to automatically delete WDB before starting the game
 - If possible:
   - Securely save password and automatically login after starting the wow client

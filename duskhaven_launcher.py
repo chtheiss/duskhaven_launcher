@@ -43,14 +43,13 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.1.0"
+version = "v0.1.1"
 
 
 class Launcher(QMainWindow):
     def __init__(self):
         super().__init__()
         logger.info("Starting application")
-
         # Set window title and size
         self.setWindowTitle("Game Launcher")
         self.setMinimumSize(400, 300)
@@ -667,16 +666,23 @@ class Launcher(QMainWindow):
             pathlib.Path(self.configuration["installation_path"]).mkdir(
                 parents=True, exist_ok=True
             )
-            file = self.configuration["download_queue"][0]
-            url = Config.LINKS[file]
-            self.create_runnable(
-                url=url,
-                dest_path=pathlib.Path(self.configuration["installation_path"]) / file,
-                paused_download_etag=self.configuration.get("paused_download_etag"),
-            )
-            self.task.start()
-            self.start_button.clicked.disconnect()
-            self.start_button.clicked.connect(self.pause_install_game)
+            if len(self.configuration["download_queue"]) > 0:
+                file = self.configuration["download_queue"][0]
+                url = Config.LINKS[file]
+                self.create_runnable(
+                    url=url,
+                    dest_path=pathlib.Path(self.configuration["installation_path"])
+                    / file,
+                    paused_download_etag=self.configuration.get("paused_download_etag"),
+                )
+                self.task.start()
+                self.start_button.clicked.disconnect()
+                self.start_button.clicked.connect(self.pause_install_game)
+            else:
+                self.start_button.clicked.disconnect()
+                self.start_button.clicked.connect(self.start_game)
+                self.start_button.setText("PLAY")
+                self.set_autoplay()
 
     def quit_launcher(self):
         logger.info("Quitting launcher")
@@ -686,6 +692,7 @@ class Launcher(QMainWindow):
             logger.info("Closing remaining tasks.")
             self.task.quit()
             self.task.wait()
+            self.task = None
         QApplication.quit()
 
     def minimize_launcher(self):
@@ -777,17 +784,22 @@ class Launcher(QMainWindow):
         if self.task:
             self.task.quit()
             self.task.wait()
+            self.task = None
         if self.install_task:
             self.install_task.quit()
             self.install_task.wait()
+            self.install_task = None
 
         if hasattr(self, "install_label_timer"):
             self.install_label_timer.stop()
 
         download_queue = self.configuration.get("download_queue", [])
-        self.configuration["download_queue"] = download_queue
-        self.configuration["download_queue"].pop(0)
-        self.save_configuration()
+        if len(download_queue) > 0 and download_queue[0] == "wow-client.zip":
+            self.configuration["download_queue"] = download_queue
+            removed_download = self.configuration["download_queue"].pop(0)
+            logger.info(f"Removing {removed_download} from download queue.")
+            logger.info(f"Download queue: {self.configuration['download_queue']}")
+            self.save_configuration()
 
         if not install_successful:
             self.progress_bar_label.setText("Installation Failed!")
@@ -801,6 +813,7 @@ class Launcher(QMainWindow):
         self.number_install_dots = 1
         self.install_label_timer = QTimer()
         self.start_button.setEnabled(False)
+        self.start_button.setText("EXCTRACTING CLIENT")
         self.start_button.clicked.disconnect()
         self.install_label_timer.timeout.connect(self.set_installing_label)
         self.install_label_timer.start(1000)
@@ -820,12 +833,21 @@ class Launcher(QMainWindow):
             file_versions[pathlib.Path(dest_path).name] = etag
             self.configuration["file_versions"] = file_versions
             self.configuration["paused_download_etag"] = None
-            self.configuration["download_queue"].pop(0)
+            removed_download = self.configuration["download_queue"].pop(0)
+            logger.info(
+                "download_next_or_stop: Removing "
+                f"{removed_download} from download queue."
+            )
+            logger.info(
+                "download_next_or_stop: Download queue: "
+                f"{self.configuration['download_queue']}"
+            )
             self.save_configuration()
 
         if self.task:
             self.task.quit()
             self.task.wait()
+            self.task = None
 
         if dest_path is not None and pathlib.Path(dest_path).name == "wow-client.zip":
             self.start_install_task(dest_path)
@@ -843,8 +865,10 @@ class Launcher(QMainWindow):
         else:
             self.configuration["install_in_progress"] = False
             self.save_configuration()
-            self.task.quit()
-            self.task.wait()
+            if self.task:
+                self.task.quit()
+                self.task.wait()
+                self.task = None
             self.start_button.clicked.disconnect()
             self.start_button.clicked.connect(self.start_game)
             self.start_button.setText("PLAY")
