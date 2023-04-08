@@ -14,6 +14,7 @@ The newest release is available [here](https://github.com/chtheiss/duskhaven_lau
 
 - Download the WoW 3.3.5 client if it is not already downloaded and unpack it in the appropriate folder
 - Adjust the realmlist, remove cinematics and remove the original Wow.exe
+- Adds config.wtf on clean install to have a more pleasant first launch of the game
 - Download/Update the custom files (patch-z, patch-5, patch-A and wow.exe) required to play on Duskhaven
 - **Pause/Resume** of interrupted downloads
 - Persistent Auto-play checkbox that starts the game automatically if no updates are required
