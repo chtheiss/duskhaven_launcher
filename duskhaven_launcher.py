@@ -564,9 +564,25 @@ class Launcher(QMainWindow):
 
     def start_game(self):
         logger.info("Starting game")
-        subprocess.Popen(
-            [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
-        )
+        if sys.platform.startswith('win'):
+            subprocess.Popen([pathlib.Path(self.configuration["installation_path"]) / "wow.exe"])
+        elif sys.platform.startswith('linux'):
+            # if you prefer, these logging lines can be removed
+            logger.info("Linux support is in beta")
+            logger.info("Wine is required")
+            logger.info("Proper prior setup of wine and related environment variables is highly recommended")
+            subprocess.Popen(["wine", pathlib.Path(self.configuration["installation_path"]) / "wow.exe"])
+        elif sys.platform.startswith('darwin'):
+            # if you prefer, these logging lines can be removed
+            logger.info("Mac OSX is unsupported")
+            logger.info("Trying anyway...")
+            logger.info("Wine is required")
+            logger.info("Proper prior setup of wine and related environment variables is highly recommended")
+            subprocess.Popen(["wine", pathlib.Path(self.configuration["installation_path"]) / "wow.exe"])
+        else:
+            logger.info("ERROR: " + sys.platform + " is completely unsupported!")
+            logger.info("Exiting!")
+            
         QApplication.quit()
 
     def add_outdated_files_to_queue(self):
