@@ -581,7 +581,7 @@ class Launcher(QMainWindow):
             subprocess.Popen(["wine", pathlib.Path(self.configuration["installation_path"]) / "wow.exe"])
         else:
             logger.error(f"{sys.platform} is completely unsupported!")
-            logger.error(f"Exiting!")
+            logger.info("Exiting!")
             
         QApplication.quit()
 
