@@ -58,6 +58,7 @@ class BackgroundTaskSignals(QObject):
     finished_download = Signal(str, str)
     finished_launcher_download = Signal(str)
     update_config = Signal(str, str)
+    failed_download = Signal()
 
 
 class BackgroundTask(QThread):
@@ -152,6 +153,15 @@ class BackgroundTask(QThread):
 
                 if self.stop_flag:
                     return
+
+        file_size = os.path.getsize(self.download_path)
+        if file_size < self.total_size:
+            logger.warning(
+                "Restarting download threat! This will NOT cause data loss! "
+                "This is most likely because your network connection "
+                "got interrupted"
+            )
+            return self.signals.failed_download.emit()
 
         self.signals.progress_label_update.emit("100%")
         self.signals.progress_update.emit(100.0)
