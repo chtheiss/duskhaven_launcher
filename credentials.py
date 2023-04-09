@@ -217,13 +217,13 @@ def type_password(password):
     for ch in password:
         try:
             if ch.isupper():
-                press_key(0x10)
+                press_key(VK_SHIFT)
                 type_key(KEYS[ch.upper()])
-                release_key(0x10)
+                release_key(VK_SHIFT)
             elif ch == "_":
-                press_key(0x10)
+                press_key(VK_SHIFT)
                 type_key(KEYS["-"])
-                release_key(0x10)
+                release_key(VK_SHIFT)
             else:
                 press_key(KEYS[ch.upper()])
                 release_key(KEYS[ch.upper()])
