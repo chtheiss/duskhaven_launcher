@@ -153,6 +153,15 @@ class BackgroundTask(QThread):
                 if self.stop_flag:
                     return
 
+        file_size = os.path.getsize(self.download_path)
+        if file_size < self.total_size:
+            logger.warning(
+                "Restarting download threat! This will NOT cause data loss! "
+                "This is most likely because your network connection "
+                "got interrupted"
+            )
+            return self.restart()
+
         self.signals.progress_label_update.emit("100%")
         self.signals.progress_update.emit(100.0)
 
@@ -199,3 +208,8 @@ class BackgroundTask(QThread):
     def quit(self):
         self.signals.update_config.emit("paused_download_etag", self.etag)
         self.stop_flag = True
+
+    def restart(self):
+        self.stop()
+        self.wait()
+        self.start()
