@@ -597,7 +597,13 @@ class Launcher(QMainWindow):
         self.task.signals.finished_launcher_download.connect(
             self.complete_launcher_update
         )
+        self.task.signals.failed_download.connect(self.restart_download_task)
         self.task.signals.update_config.connect(self.update_config)
+
+    def restart_download_task(self):
+        logger.info("Restarting download task.")
+        self.task = None
+        self.update_game()
 
     def update_launcher(self, assets):
         if hasattr(self, "browse_button"):

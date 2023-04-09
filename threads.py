@@ -58,6 +58,7 @@ class BackgroundTaskSignals(QObject):
     finished_download = Signal(str, str)
     finished_launcher_download = Signal(str)
     update_config = Signal(str, str)
+    failed_download = Signal()
 
 
 class BackgroundTask(QThread):
@@ -160,7 +161,7 @@ class BackgroundTask(QThread):
                 "This is most likely because your network connection "
                 "got interrupted"
             )
-            return self.restart()
+            return self.signals.failed_download.emit()
 
         self.signals.progress_label_update.emit("100%")
         self.signals.progress_update.emit(100.0)
@@ -208,8 +209,3 @@ class BackgroundTask(QThread):
     def quit(self):
         self.signals.update_config.emit("paused_download_etag", self.etag)
         self.stop_flag = True
-
-    def restart(self):
-        self.stop()
-        self.wait()
-        self.start()
