@@ -580,8 +580,8 @@ class Launcher(QMainWindow):
             logger.info("Proper prior setup of wine and related environment variables is highly recommended")
             subprocess.Popen(["wine", pathlib.Path(self.configuration["installation_path"]) / "wow.exe"])
         else:
-            logger.info("ERROR: " + sys.platform + " is completely unsupported!")
-            logger.info("Exiting!")
+            logger.error(f"{sys.platform} is completely unsupported!")
+            logger.error(f"Exiting!")
             
         QApplication.quit()
 
