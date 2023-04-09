@@ -1,3 +1,4 @@
 keyring
+pyautogui
 PySide6
 requests
