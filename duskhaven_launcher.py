@@ -686,12 +686,47 @@ class Launcher(QMainWindow):
                 / "Config.wtf",
                 credentials.get_account_name(),
             )
-        subprocess.Popen(
-            [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
-        )
-        time.sleep(5)
-        credentials.type_password(password_)
-        credentials.type_key(credentials.key_to_hex("ENTER"))
+
+        if sys.platform.startswith("win"):
+            subprocess.Popen(
+                [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
+            )
+            time.sleep(5)
+            credentials.type_password(password_)
+            credentials.type_key(credentials.key_to_hex("ENTER"))
+        elif sys.platform.startswith("linux"):
+            # if you prefer, these logging lines can be removed
+            logger.info("Linux support is in beta")
+            logger.info("Wine is required")
+            logger.info(
+                "Proper prior setup of wine and related environment variables "
+                "is highly recommended"
+            )
+            subprocess.Popen(
+                [
+                    "wine",
+                    pathlib.Path(self.configuration["installation_path"]) / "wow.exe",
+                ]
+            )
+        elif sys.platform.startswith("darwin"):
+            # if you prefer, these logging lines can be removed
+            logger.info("Mac OSX is unsupported")
+            logger.info("Trying anyway...")
+            logger.info("Wine is required")
+            logger.info(
+                "Proper prior setup of wine and related environment variables "
+                "is highly recommended"
+            )
+            subprocess.Popen(
+                [
+                    "wine",
+                    pathlib.Path(self.configuration["installation_path"]) / "wow.exe",
+                ]
+            )
+        else:
+            logger.error(f"{sys.platform} is completely unsupported!")
+            logger.info("Exiting!")
+
         QApplication.quit()
 
     def add_outdated_files_to_queue(self):
