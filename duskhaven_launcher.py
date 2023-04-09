@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import pathlib
@@ -14,6 +13,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -26,7 +26,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import credentials
 import download
+import settings
 import threads
 import utils
 from config import Config
@@ -43,7 +45,82 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.1.1"
+version = "v0.1.2"
+
+
+class Login(QWidget):
+    def __init__(self, app_config, max_width):
+        super().__init__()
+        self.app_config = app_config
+        self.setMaximumWidth(max_width)
+        layout = QGridLayout()
+
+        label_name_style = """
+            QLabel {
+                color: white;
+                font-size: 14px;
+                margin-bottom: 2px;
+                font-weight: bold;
+            }
+        """
+
+        line_edit_style = """
+            QLineEdit {
+                background-color: #F2F2F2;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 2px;
+                border: 2px solid #D9D9D9;
+                selection-background-color: #0078D7;
+                color: #333333;
+            }
+
+            QLineEdit:focus {
+                border: 2px solid #0078D7;
+                outline: none;
+            }
+
+            QLineEdit:disabled {
+                background-color: #E6E6E6;
+                color: #999999;
+            }
+
+            QLineEdit::placeholder {
+                color: #999999;
+            }
+        """
+
+        label_name = QLabel("<p> ACCOUNT NAME </p>")
+        label_name.setStyleSheet(label_name_style)
+        self.lineEdit_username = QLineEdit()
+        self.lineEdit_username.setStyleSheet(line_edit_style)
+        account_name = credentials.get_account_name()
+        if account_name is not None:
+            self.lineEdit_username.setText(account_name)
+        self.lineEdit_username.textChanged.connect(self.username_changed)
+        layout.addWidget(label_name, 0, 0)
+        layout.addWidget(self.lineEdit_username, 1, 0)
+
+        label_password = QLabel("<p> PASSWORD </p>")
+        label_password.setStyleSheet(label_name_style)
+        self.lineEdit_password = QLineEdit()
+        self.lineEdit_password.setStyleSheet(line_edit_style)
+        password_ = credentials.get_password()
+        if password_ is not None:
+            self.lineEdit_password.setText(password_)
+        self.lineEdit_password.textChanged.connect(self.password_editing_finished)
+        self.lineEdit_password.setEchoMode(QLineEdit.Password)
+
+        layout.addWidget(label_password, 2, 0)
+        layout.addWidget(self.lineEdit_password, 3, 0)
+
+        self.setLayout(layout)
+
+    def username_changed(self):
+        credentials.set_account_name(self.lineEdit_username.text())
+
+    def password_editing_finished(self):
+        credentials.set_password(self.lineEdit_password.text())
 
 
 class Launcher(QMainWindow):
@@ -57,15 +134,15 @@ class Launcher(QMainWindow):
         self.create_background()
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
         self.setWindowIcon(QIcon(os.path.join(basedir, "images", "favicon.ico")))
-        # Load configuration
-        self.load_configuration()
+
+        self.configuration = settings.Settings("config.json")
 
         if self.configuration.get("just_updated", False):
             temp_file = pathlib.Path("temp_launcher")
             if temp_file.exists():
                 temp_file.unlink()
             self.configuration["just_updated"] = False
-            self.save_configuration()
+            self.configuration.save()
 
         # Get the global QThreadPool instance
         self.task = None
@@ -98,8 +175,18 @@ class Launcher(QMainWindow):
         self.progress_bar.setRange(0, 10000)
         self.progress_bar.setMaximumHeight(self.height * 0.02)
 
+        self.save_credentials = QCheckBox()
+        self.save_credentials.setText("SAVE CREDENTIALS")
+        self.save_credentials.setFont(self.font_small)
+        self.save_credentials.setObjectName("save_credentials")
+        self.save_credentials.setLayoutDirection(Qt.RightToLeft)
+        self.save_credentials.setChecked(
+            self.configuration.get("save_credentials", False)
+        )
+        self.save_credentials.toggled.connect(self.set_save_credentials)
+
         self.autoplay_in_label = QLabel("")
-        self.progress_bar.setObjectName("autoplay_in_label")
+        self.autoplay_in_label.setObjectName("autoplay_in_label")
         self.autoplay_in_label.setFont(self.font_small)
         self.autoplay_in_label.setStyleSheet(
             """
@@ -119,6 +206,7 @@ class Launcher(QMainWindow):
         self.progress_bar_label_layout.addWidget(self.progress_bar_label)
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.progress_bar_label_layout.addItem(spacer)
+        self.progress_bar_label_layout.addWidget(self.save_credentials)
         self.progress_bar_label_layout.addWidget(self.autoplay_in_label)
         self.progress_bar_label_layout.addWidget(self.autoplay)
         self.progress_bar_label_layout.setContentsMargins(0, 0, 0, 0)
@@ -132,8 +220,14 @@ class Launcher(QMainWindow):
         self.button_layout.addLayout(self.progress_bar_layout)
         self.button_layout.addWidget(self.start_button)
         self.main_layout.addLayout(top_bar_layout)
+        self.login = Login(self.configuration, self.width * 0.2)
+
+        self.login.setContentsMargins(0, 0, 0, self.height * 0.07)
+        if not self.configuration.get("save_credentials", False):
+            self.login.hide()
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout.addItem(spacer)
+        self.main_layout.addWidget(self.login)
         dialog_created = self.create_installation_dialog()
         if not dialog_created:
             self.button_layout.setContentsMargins(0, 0, 0, self.height * 0.01)
@@ -167,6 +261,11 @@ class Launcher(QMainWindow):
             margin-top: 0px;
             margin-left: 40px;
 
+        }
+
+        QCheckBox#save_credentials {
+            color: white!important;
+            margin-right: 5px;
         }
 
         QCheckBox#autoplay {
@@ -223,10 +322,24 @@ class Launcher(QMainWindow):
         """
         )
 
+    def set_save_credentials(self):
+        if self.save_credentials.isChecked():
+            self.configuration["save_credentials"] = True
+            self.configuration.save()
+            self.login.show()
+        else:
+            self.configuration["save_credentials"] = False
+            self.configuration.save()
+            self.login.lineEdit_username.setText("")
+            self.login.lineEdit_password.setText("")
+            credentials.delete_password()
+            credentials.delete_account_name()
+            self.login.hide()
+
     def set_autoplay(self):
         if self.autoplay.isChecked():
             self.configuration["autoplay"] = True
-            self.save_configuration()
+            self.configuration.save()
             if self.start_button.text() == "PLAY":
                 self.remaining_seconds = 5  # set the initial value of remaining seconds
                 self.autoplay_timer = QTimer()
@@ -242,7 +355,7 @@ class Launcher(QMainWindow):
             if hasattr(self, "autoplay_timer"):
                 self.autoplay_timer.stop()
                 self.autoplay_in_label.setText("")
-            self.save_configuration()
+            self.configuration.save()
 
     def set_installing_label(self):
         self.progress_bar_label.setText(
@@ -264,7 +377,7 @@ class Launcher(QMainWindow):
 
     def update_config(self, key, value):
         self.configuration[key] = value
-        self.save_configuration()
+        self.configuration.save()
 
     def create_top_bar(self, layout):
         self.official_site_link = QLabel(
@@ -552,7 +665,7 @@ class Launcher(QMainWindow):
             logger.error(e)
 
         self.configuration["just_updated"] = True
-        self.save_configuration()
+        self.configuration.save()
 
         time.sleep(2)
         logger.info(f"Starting Launcher: {executable_path}")
@@ -564,9 +677,21 @@ class Launcher(QMainWindow):
 
     def start_game(self):
         logger.info("Starting game")
+        password_ = None
+        if self.save_credentials.isChecked():
+            password_ = credentials.get_password()
+            credentials.update_account_name(
+                pathlib.Path(self.configuration["installation_path"])
+                / "WTF"
+                / "Config.wtf",
+                credentials.get_account_name(),
+            )
         subprocess.Popen(
             [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
         )
+        time.sleep(5)
+        credentials.type_password(password_)
+        credentials.type_key(credentials.key_to_hex("ENTER"))
         QApplication.quit()
 
     def add_outdated_files_to_queue(self):
@@ -595,7 +720,7 @@ class Launcher(QMainWindow):
             ):
                 donwload_queue.append(full_file)
         self.configuration["download_queue"] = donwload_queue
-        self.save_configuration()
+        self.configuration.save()
 
     def start_install_game(self):
         logger.info("Start install game")
@@ -611,7 +736,7 @@ class Launcher(QMainWindow):
 
         if "installation_path" not in self.configuration:
             self.configuration["installation_path"] = install_folder
-            self.save_configuration()
+            self.configuration.save()
 
         status = self.check_wow_install()
         if status == "update":
@@ -632,7 +757,7 @@ class Launcher(QMainWindow):
         wow_zip_dest_path = pathlib.Path(install_folder) / "wow-client.zip"
         if "wow-client.zip" not in download_queue and not wow_zip_dest_path.exists():
             self.configuration["download_queue"] = ["wow-client.zip"] + download_queue
-            self.save_configuration()
+            self.configuration.save()
         self.add_outdated_files_to_queue()
 
         if wow_zip_dest_path.exists():
@@ -662,7 +787,7 @@ class Launcher(QMainWindow):
         if not self.task:
             self.start_button.setText("PAUSE")
             self.configuration["install_in_progress"] = True
-            self.save_configuration()
+            self.configuration.save()
             pathlib.Path(self.configuration["installation_path"]).mkdir(
                 parents=True, exist_ok=True
             )
@@ -687,7 +812,7 @@ class Launcher(QMainWindow):
     def quit_launcher(self):
         logger.info("Quitting launcher")
         # Save configuration and quit the application
-        self.save_configuration()
+        self.configuration.save()
         if self.task:
             logger.info("Closing remaining tasks.")
             self.task.quit()
@@ -776,7 +901,7 @@ class Launcher(QMainWindow):
         if selected_directory:
             self.configuration["installation_path"] = selected_directory
             self.installation_path_text.setText(selected_directory)
-            self.save_configuration()
+            self.configuration.save()
             self.start_button.setEnabled(False)
             self.check_wow_install()
 
@@ -799,7 +924,7 @@ class Launcher(QMainWindow):
             removed_download = self.configuration["download_queue"].pop(0)
             logger.info(f"Removing {removed_download} from download queue.")
             logger.info(f"Download queue: {self.configuration['download_queue']}")
-            self.save_configuration()
+            self.configuration.save()
 
         if not install_successful:
             self.progress_bar_label.setText("Installation Failed!")
@@ -842,7 +967,7 @@ class Launcher(QMainWindow):
                 "download_next_or_stop: Download queue: "
                 f"{self.configuration['download_queue']}"
             )
-            self.save_configuration()
+            self.configuration.save()
 
         if self.task:
             self.task.quit()
@@ -864,7 +989,7 @@ class Launcher(QMainWindow):
             self.task.start()
         else:
             self.configuration["install_in_progress"] = False
-            self.save_configuration()
+            self.configuration.save()
             if self.task:
                 self.task.quit()
                 self.task.wait()
@@ -873,22 +998,6 @@ class Launcher(QMainWindow):
             self.start_button.clicked.connect(self.start_game)
             self.start_button.setText("PLAY")
             self.set_autoplay()
-
-    def load_configuration(self):
-        # Load the configuration from a JSON file
-        self.configuration = {}
-        if os.path.exists("config.json"):
-            with open("config.json") as f:
-                self.configuration = json.load(f)
-        else:
-            with open("config.json", "w") as f:
-                self.configuration = {}
-                json.dump(self.configuration, f)
-
-    def save_configuration(self):
-        # Save the configuration to a JSON file
-        with open("config.json", "w") as f:
-            json.dump(self.configuration, f, indent=2)
 
     def update_progress_label(self, info):
         self.progress_bar_label.setText(info)
