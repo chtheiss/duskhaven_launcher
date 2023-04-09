@@ -691,6 +691,9 @@ class Launcher(QMainWindow):
             subprocess.Popen(
                 [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
             )
+            time.sleep(5)
+            credentials.type_password(password_)
+            credentials.type_key("\n")
         elif sys.platform.startswith("linux"):
             # if you prefer, these logging lines can be removed
             logger.info("Linux support is in beta")
@@ -723,10 +726,6 @@ class Launcher(QMainWindow):
         else:
             logger.error(f"{sys.platform} is completely unsupported!")
             logger.info("Exiting!")
-
-        time.sleep(5)
-        credentials.type_password(password_)
-        credentials.type_key("\n")
 
         QApplication.quit()
 
@@ -1064,11 +1063,12 @@ class Launcher(QMainWindow):
 
 
 if __name__ == "__main__":
-    # try:
-    app = QApplication(sys.argv)
-    launcher = Launcher()
-    launcher.show()
-    # except Exception as e:
-    #    logger.error(e)
-    # sys.exit(1)
+    try:
+        app = QApplication(sys.argv)
+        launcher = Launcher()
+        launcher.show()
+    except Exception as e:
+        logger.error(e)
+        time.sleep(5)
+        sys.exit(1)
     sys.exit(app.exec())

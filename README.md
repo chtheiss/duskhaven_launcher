@@ -51,7 +51,7 @@ Run the Nuitka:
 Windows:
 
 ```
-python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist  duskhaven_launcher.py
+python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --windows-icon-from-ico=images/favicon.ico --output-dir=dist  --include-module="win32timezone"  duskhaven_launcher.py
 ```
 
 Linux:

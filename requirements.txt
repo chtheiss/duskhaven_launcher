@@ -1,4 +1,5 @@
 keyring
-pyautogui
 PySide6
+pywin32
 requests
+win32timezone
