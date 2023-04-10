@@ -1,5 +1,0 @@
-keyring
-PySide6
-pynput
-pywin32
-requests

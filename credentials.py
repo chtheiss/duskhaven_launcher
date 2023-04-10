@@ -3,7 +3,7 @@ import logging
 import time
 import sys
 import keyring
-from pynput.keyboard import Key, Controller
+from pynput.keyboard import Controller
 keyboard = Controller()
 
 if sys.platform.startswith("win"):
