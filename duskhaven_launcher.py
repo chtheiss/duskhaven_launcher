@@ -6,7 +6,7 @@ import sys
 import time
 from typing import Optional
 
-from pynput.keyboard import Controller, Key
+from pynput.keyboard import Key
 from PySide6 import QtCore
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
@@ -45,8 +45,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("Duskhaven Launcher")
-
-keyboard = Controller()
 
 version = "v0.1.2"
 

@@ -5,8 +5,6 @@ import time
 import keyring
 from pynput.keyboard import Controller
 
-keyboard = Controller()
-
 if sys.platform.startswith("win"):
     from keyring.backends import Windows
 
@@ -75,11 +73,13 @@ def update_account_name(filename, new_account_name):
 
 
 def type_key(key):
+    keyboard = Controller()
     keyboard.press(key)
     keyboard.release(key)
 
 
 def type_password(password):
+    keyboard = Controller()
     for ch in password:
         keyboard.press(ch)
         keyboard.release(ch)
