@@ -1,5 +1,1 @@
-keyring
-PySide6
-pynput
 secretstorage
-requests

@@ -5,9 +5,8 @@ import subprocess
 import sys
 import time
 from typing import Optional
-from pynput.keyboard import Key, Controller
-keyboard = Controller()
 
+from pynput.keyboard import Controller, Key
 from PySide6 import QtCore
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
@@ -46,6 +45,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("Duskhaven Launcher")
+
+keyboard = Controller()
 
 version = "v0.1.2"
 
@@ -716,17 +717,21 @@ class Launcher(QMainWindow):
         else:
             logger.error(f"{sys.platform} is completely unsupported!")
             logger.info("Exiting!")
-            
-        if (sys.platform.startswith("linux") or sys.platform.startswith("win")):
-            password_wait_timer=self.configuration.get("password_wait_timer")
+
+        if sys.platform.startswith("linux") or sys.platform.startswith("win"):
+            password_wait_timer = self.configuration.get("password_wait_timer")
             if password_wait_timer is None:
                 self.configuration.set("password_wait_timer", 5)
                 self.configuration.save()
-            logger.info("Waiting " + str(self.configuration.get("password_wait_timer")) + " seconds before trying to enter password")
-            time.sleep(password_wait_timer)
+            logger.info(
+                "Waiting "
+                + str(self.configuration.get("password_wait_timer"))
+                + " seconds before trying to enter password"
+            )
+            time.sleep(self.configuration["password_wait_timer"])
             credentials.type_password(password_)
             credentials.type_key(Key.enter)
-            
+
         QApplication.quit()
 
     def add_outdated_files_to_queue(self):

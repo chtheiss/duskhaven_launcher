@@ -1,17 +1,19 @@
-import ctypes
 import logging
-import time
 import sys
+import time
+
 import keyring
-from pynput.keyboard import Key, Controller
+from pynput.keyboard import Controller
+
 keyboard = Controller()
 
 if sys.platform.startswith("win"):
-    from ctypes import wintypes
     from keyring.backends import Windows
+
     keyring.set_keyring(Windows.WinVaultKeyring())
 elif sys.platform.startswith("linux"):
     from keyring.backends import SecretService
+
     keyring.set_keyring(SecretService.Keyring())
 
 logging.basicConfig(
@@ -23,6 +25,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("Password")
+
 
 def set_account_name(username):
     keyring.set_password("duskhaven_launcher", "account_name", username)
