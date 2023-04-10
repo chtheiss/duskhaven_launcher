@@ -5,6 +5,8 @@ import subprocess
 import sys
 import time
 from typing import Optional
+from pynput.keyboard import Key, Controller
+keyboard = Controller()
 
 from PySide6 import QtCore
 from PySide6.QtCore import QTimer
@@ -697,9 +699,6 @@ class Launcher(QMainWindow):
             subprocess.Popen(
                 [pathlib.Path(self.configuration["installation_path"]) / "wow.exe"]
             )
-            time.sleep(5)
-            credentials.type_password(password_)
-            credentials.type_key("\n")
         elif sys.platform.startswith("linux"):
             # if you prefer, these logging lines can be removed
             logger.info("Linux support is in beta")
@@ -714,25 +713,20 @@ class Launcher(QMainWindow):
                     pathlib.Path(self.configuration["installation_path"]) / "wow.exe",
                 ]
             )
-        elif sys.platform.startswith("darwin"):
-            # if you prefer, these logging lines can be removed
-            logger.info("Mac OSX is unsupported")
-            logger.info("Trying anyway...")
-            logger.info("Wine is required")
-            logger.info(
-                "Proper prior setup of wine and related environment variables "
-                "is highly recommended"
-            )
-            subprocess.Popen(
-                [
-                    "wine",
-                    pathlib.Path(self.configuration["installation_path"]) / "wow.exe",
-                ]
-            )
         else:
             logger.error(f"{sys.platform} is completely unsupported!")
             logger.info("Exiting!")
-
+            
+        if (sys.platform.startswith("linux") or sys.platform.startswith("win")):
+            password_wait_timer=self.configuration.get("password_wait_timer")
+            if password_wait_timer is None:
+                self.configuration.set("password_wait_timer", 5)
+                self.configuration.save()
+            logger.info("Waiting " + str(self.configuration.get("password_wait_timer")) + " seconds before trying to enter password")
+            time.sleep(password_wait_timer)
+            credentials.type_password(password_)
+            credentials.type_key(Key.enter)
+            
         QApplication.quit()
 
     def add_outdated_files_to_queue(self):

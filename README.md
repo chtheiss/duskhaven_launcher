@@ -39,10 +39,17 @@ Simple progamm to download or update the WoW 3.3.5a client and the patch-z, patc
 
 ### Build locally
 
-Install the requirements by running:
+Install the requirements for windows by running:
 
 ```
 pip install -r requirements.txt
+pip install nuitka
+```
+
+Install the requirements for linux by running:
+
+```
+pip install -r requirements_linux.txt
 pip install nuitka
 ```
 
@@ -109,6 +116,7 @@ Finish up the mandatory steps of the manual installation by installing the remai
 
 ```
 mkdir -p "/home/$USER/.local/share/Duskhaven/prefix/"
+mkdir "/home/$USER/.local/share/Duskhaven/DXVK_state_cache/"
 winetricks win10 ie8 corefonts dotnet48 vcrun2019 dxvk
 ```
 
@@ -117,6 +125,7 @@ winetricks win10 ie8 corefonts dotnet48 vcrun2019 dxvk
 ```
 cd "/home/$USER/.local/share/Duskhaven/"
 wget https://github.com/chtheiss/duskhaven_launcher/releases/latest/download/duskhaven_launcher.bin
+wget https://github.com/chtheiss/duskhaven_launcher/blob/main/images/Duskhaven.png
 chmod +x ./duskhaven_launcher.bin
 ```
 
@@ -131,6 +140,9 @@ echo '#!'$(which sh) > ./run_duskhaven.sh
 echo cd \"/home/$USER/.local/share/Duskhaven/\" >> ./run_duskhaven.sh
 echo export WINEPREFIX=\"/home/$USER/.local/share/Duskhaven/prefix/\" >> ./run_duskhaven.sh
 echo export WINEARCH=win32 >> ./run_duskhaven.sh
+echo export DXVK_STATE_CACHE_PATH="/home/$USER/.local/share/Duskhaven/DXVK_state_cache/" >> ./run_duskhaven.sh
+echo export WINE_LARGE_ADDRESS_AWARE="1"  >> ./run_duskhaven.sh
+echo export RADV_PERFTEST="gpl" >> ./run_duskhaven.sh
 echo ./duskhaven_launcher.bin >> ./run_duskhaven.sh
 ```
 
@@ -146,4 +158,5 @@ echo Categories=Game >> ./Duskhaven.desktop
 echo Name=Duskhaven >> ./Duskhaven.desktop
 echo Exec=/home/$USER/.local/share/Duskhaven/run_duskhaven.sh >> ./Duskhaven.desktop
 echo Path=/home/$USER/.local/share/Duskhaven/ >> ./Duskhaven.desktop
+echo Icon=/home/$USER/.local/share/Duskhaven/Duskhaven >> ./Duskhaven.desktop
 ```
