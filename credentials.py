@@ -75,12 +75,15 @@ def update_account_name(filename, new_account_name):
 def type_key(key):
     keyboard = Controller()
     keyboard.press(key)
+    time.sleep(0.025)
     keyboard.release(key)
+    time.sleep(0.025)
 
 
 def type_password(password):
     keyboard = Controller()
     for ch in password:
         keyboard.press(ch)
+        time.sleep(0.025)
         keyboard.release(ch)
-        time.sleep(0.05)
+        time.sleep(0.025)
