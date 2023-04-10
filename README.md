@@ -125,7 +125,7 @@ winetricks win10 ie8 corefonts dotnet48 vcrun2019 dxvk
 ```
 cd "/home/$USER/.local/share/Duskhaven/"
 wget https://github.com/chtheiss/duskhaven_launcher/releases/latest/download/duskhaven_launcher.bin
-wget https://github.com/chtheiss/duskhaven_launcher/blob/main/images/Duskhaven.png
+wget https://github.com/chtheiss/duskhaven_launcher/blob/main/images/favicon.png
 chmod +x ./duskhaven_launcher.bin
 ```
 
@@ -158,5 +158,5 @@ echo Categories=Game >> ./Duskhaven.desktop
 echo Name=Duskhaven >> ./Duskhaven.desktop
 echo Exec=/home/$USER/.local/share/Duskhaven/run_duskhaven.sh >> ./Duskhaven.desktop
 echo Path=/home/$USER/.local/share/Duskhaven/ >> ./Duskhaven.desktop
-echo Icon=/home/$USER/.local/share/Duskhaven/Duskhaven >> ./Duskhaven.desktop
+echo Icon=/home/$USER/.local/share/Duskhaven/favicon >> ./Duskhaven.desktop
 ```
