@@ -40,18 +40,18 @@ jobs:
           libxcb-util-dev libxcb-xinerama0-dev libxcb-xkb-dev \
           libxkbcommon-dev libxkbcommon-x11-dev libatspi2.0-dev \
           libopengl0 \
+          libgl1-mesa-glx libegl1-mesa libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6 \
           python3-dev \
-          python3-tk \
           patchelf
-          
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements_linux.txt
-          pip install nuitka
-          conda install libpython-static -y
-      
+
+          conda run python -m pip install --upgrade pip
+          conda run pip install -r requirements.txt -r requirements_linux.txt
+          conda run pip install nuitka
+          conda install -c tk libpython-static -y
+
       - name: Build Executable
         run: |
-          python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=build duskhaven_launcher.py
+          conda run python -m nuitka --standalone --enable-plugin=pyside6 --disable-console --onefile --include-data-dir=images=images --output-dir=build duskhaven_launcher.py
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
