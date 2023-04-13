@@ -6,9 +6,10 @@ import shutil
 import time
 
 import requests
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, QThread, Signal, Slot
 
 import download
+import server_status
 import utils
 
 logging.basicConfig(
@@ -30,6 +31,21 @@ def format_time(seconds):
         return f"{td.days} days, {hours:02d}:{minutes:02d}:{seconds:02d}"
     else:
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+class ServerStatusSignals(QObject):
+    login_server_status = Signal(bool)
+    game_server_status = Signal(bool)
+
+
+class ServerStatusTask(QRunnable):
+    def __init__(self):
+        super().__init__()
+        self.signals = ServerStatusSignals()
+
+    def run(self):
+        self.signals.login_server_status.emit(server_status.check_login_server())
+        self.signals.game_server_status.emit(server_status.check_game_server())
 
 
 class InstallWoWTaskSignals(QObject):
