@@ -25,7 +25,7 @@ class Config:
         "specular": "1",
         "groundEffectDensity": "24",
         "projectedTextures": "1",
-        "realmlist": "duskhaven.servegame.com",
+        "realmlist": "logon.duskhaven.net",
         "patchlist": "ignore",
         "gxWindow": "1",
         "gxMaximize": "1",

@@ -94,7 +94,7 @@ def prepare_wow_folder(install_folder, wow_client_zip_path):
     logger.info("Changing realmlist")
     realm_list_path = install_folder / "Data" / "enUS" / "realmlist.wtf"
     with open(realm_list_path, "w") as realm_list_file:
-        realm_list_file.write("set realmlist duskhaven.servegame.com")
+        realm_list_file.write("set realmlist logon.duskhaven.net")
 
     logger.info("Changing WTF config")
     create_wtf_config(install_folder)

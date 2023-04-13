@@ -6,9 +6,10 @@ import shutil
 import time
 
 import requests
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, QThread, Signal, Slot
 
 import download
+import server_status
 import utils
 
 logging.basicConfig(
@@ -30,6 +31,29 @@ def format_time(seconds):
         return f"{td.days} days, {hours:02d}:{minutes:02d}:{seconds:02d}"
     else:
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+class ServerStatusSignals(QObject):
+    login_server_status = Signal(bool)
+    game_server_status = Signal(bool)
+
+
+class ServerStatusTask(QRunnable):
+    def __init__(self, server):
+        super().__init__()
+        self.server = server
+        self.signals = ServerStatusSignals()
+
+    def run(self):
+        if self.server == "game":
+            self.signals.game_server_status.emit(server_status.check_game_server())
+        elif self.server == "login":
+            self.signals.login_server_status.emit(server_status.check_login_server())
+        else:
+            logger.error(
+                f"Provided {self.server} as server name. But server should "
+                "be one of {'game', 'login'}"
+            )
 
 
 class InstallWoWTaskSignals(QObject):
@@ -152,6 +176,7 @@ class BackgroundTask(QThread):
                         self.signals.progress_update.emit(progress_percent)
 
                 if self.stop_flag:
+                    logger.info("Stopping download thread.")
                     return
 
         file_size = os.path.getsize(self.download_path)
