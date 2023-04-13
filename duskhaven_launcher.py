@@ -168,11 +168,7 @@ class ServerStatusBar(QWidget):
         layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         self.threadpool = QtCore.QThreadPool()
-        self.threadpool.setMaxThreadCount(1)
-
-        self.task = threads.ServerStatusTask()
-        self.task.signals.game_server_status.connect(self.set_game_server_status)
-        self.task.signals.login_server_status.connect(self.set_login_server_status)
+        self.threadpool.setMaxThreadCount(2)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.request_server_status)
@@ -183,10 +179,17 @@ class ServerStatusBar(QWidget):
 
     def request_server_status(self):
         if not self.window().isMinimized():
-            task = threads.ServerStatusTask()
-            task.signals.game_server_status.connect(self.set_game_server_status)
-            task.signals.login_server_status.connect(self.set_login_server_status)
-            self.threadpool.start(task)
+            self.game_task = threads.ServerStatusTask("game")
+            self.game_task.signals.game_server_status.connect(
+                self.set_game_server_status
+            )
+
+            self.login_task = threads.ServerStatusTask("login")
+            self.login_task.signals.login_server_status.connect(
+                self.set_login_server_status
+            )
+            self.threadpool.start(self.game_task)
+            self.threadpool.start(self.login_task)
 
     def set_game_server_status(self, alive):
         style = """
@@ -952,6 +955,10 @@ class Launcher(QMainWindow):
             self.task.quit()
             self.task.wait()
             self.task = None
+
+        if hasattr(self.server_status_bar, "timer"):
+            self.server_status_bar.timer.stop()
+
         QApplication.quit()
 
     def minimize_launcher(self):

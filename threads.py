@@ -39,13 +39,21 @@ class ServerStatusSignals(QObject):
 
 
 class ServerStatusTask(QRunnable):
-    def __init__(self):
+    def __init__(self, server):
         super().__init__()
+        self.server = server
         self.signals = ServerStatusSignals()
 
     def run(self):
-        self.signals.login_server_status.emit(server_status.check_login_server())
-        self.signals.game_server_status.emit(server_status.check_game_server())
+        if self.server == "game":
+            self.signals.game_server_status.emit(server_status.check_game_server())
+        elif self.server == "login":
+            self.signals.login_server_status.emit(server_status.check_login_server())
+        else:
+            logger.error(
+                f"Provided {self.server} as server name. But server should "
+                "be one of {'game', 'login'}"
+            )
 
 
 class InstallWoWTaskSignals(QObject):
@@ -168,6 +176,7 @@ class BackgroundTask(QThread):
                         self.signals.progress_update.emit(progress_percent)
 
                 if self.stop_flag:
+                    logger.info("Stopping download thread.")
                     return
 
         file_size = os.path.getsize(self.download_path)
