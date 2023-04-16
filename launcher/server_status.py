@@ -26,10 +26,3 @@ def check_game_server():
         return False
     time.sleep(5)
     return check("51.75.147.219", 8086, timeout=2)
-
-
-def check_file_server():
-    if not check("65.21.152.13", 443, timeout=2):
-        return False
-    time.sleep(5)
-    return check("65.21.152.13", 443, timeout=2)

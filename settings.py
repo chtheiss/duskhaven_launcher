@@ -24,6 +24,9 @@ class Settings:
     def set(self, key, value):
         self.configuration[key] = value
 
+    def pop(self, key, default=None):
+        return self.configuration.pop(key, default)
+
     def __getitem__(self, key):
         return self.configuration[key]
 
@@ -35,3 +38,6 @@ class Settings:
 
     def __contains__(self, key):
         return key in self.configuration
+
+    def __iter__(self):
+        return iter(self.configuration)

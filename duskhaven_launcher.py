@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QFileDialog,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -27,12 +26,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-import credentials
-import download
 import settings
-import threads
-import utils
-from config import Config
+from launcher import credentials, download, threads, ui, utils
+from launcher.config import Config
 
 basedir = os.path.dirname(__file__)
 
@@ -46,180 +42,7 @@ logging.basicConfig(
 
 logger = logging.getLogger("Duskhaven Launcher")
 
-version = "v0.1.3"
-
-
-class Login(QWidget):
-    def __init__(self, app_config, max_width):
-        super().__init__()
-        self.app_config = app_config
-        self.setMaximumWidth(max_width)
-        layout = QGridLayout()
-
-        label_name_style = """
-            QLabel {
-                color: white;
-                font-size: 14px;
-                margin-bottom: 2px;
-                font-weight: bold;
-            }
-        """
-
-        line_edit_style = """
-            QLineEdit {
-                background-color: #F2F2F2;
-                border-radius: 5px;
-                font-size: 14px;
-                padding: 2px;
-                border: 2px solid #D9D9D9;
-                selection-background-color: #0078D7;
-                color: #333333;
-            }
-
-            QLineEdit:focus {
-                border: 2px solid #0078D7;
-                outline: none;
-            }
-
-            QLineEdit:disabled {
-                background-color: #E6E6E6;
-                color: #999999;
-            }
-
-            QLineEdit::placeholder {
-                color: #999999;
-            }
-        """
-
-        label_name = QLabel("<p> ACCOUNT NAME </p>")
-        label_name.setStyleSheet(label_name_style)
-        self.lineEdit_username = QLineEdit()
-        self.lineEdit_username.setStyleSheet(line_edit_style)
-        account_name = credentials.get_account_name()
-        if account_name is not None:
-            self.lineEdit_username.setText(account_name)
-        self.lineEdit_username.textChanged.connect(self.username_changed)
-        layout.addWidget(label_name, 0, 0)
-        layout.addWidget(self.lineEdit_username, 1, 0)
-
-        label_password = QLabel("<p> PASSWORD </p>")
-        label_password.setStyleSheet(label_name_style)
-        self.lineEdit_password = QLineEdit()
-        self.lineEdit_password.setStyleSheet(line_edit_style)
-        password_ = credentials.get_password()
-        if password_ is not None:
-            self.lineEdit_password.setText(password_)
-        self.lineEdit_password.textChanged.connect(self.password_editing_finished)
-        self.lineEdit_password.setEchoMode(QLineEdit.Password)
-
-        layout.addWidget(label_password, 2, 0)
-        layout.addWidget(self.lineEdit_password, 3, 0)
-
-        self.setLayout(layout)
-
-    def username_changed(self):
-        credentials.set_account_name(self.lineEdit_username.text())
-
-    def password_editing_finished(self):
-        credentials.set_password(self.lineEdit_password.text())
-
-
-class ServerStatusBar(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QHBoxLayout()
-        server_layout = QGridLayout()
-        server_label_style = """
-            QLabel {
-                color: white;
-                font-size: 16px;
-                margin-bottom: 2px;
-                font-weight: bold;
-            }
-        """
-
-        status_label_style = """
-            QLabel {
-                color: green;
-                font-size: 16px;
-                margin-bottom: 2px;
-                font-weight: bold;
-            }
-        """
-
-        game_server_label = QLabel("Game Server:")
-        game_server_label.setStyleSheet(server_label_style)
-
-        login_server_label = QLabel("Login Server:")
-        login_server_label.setStyleSheet(server_label_style)
-
-        self.game_server_status_label = QLabel()
-        self.game_server_status_label.setStyleSheet(status_label_style)
-
-        self.login_server_status_label = QLabel()
-        self.login_server_status_label.setStyleSheet(status_label_style)
-
-        server_layout.addWidget(game_server_label, 0, 0)
-        server_layout.addWidget(self.game_server_status_label, 0, 1)
-        server_layout.addWidget(login_server_label, 1, 0)
-        server_layout.addWidget(self.login_server_status_label, 1, 1)
-
-        layout.addLayout(server_layout)
-        layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
-
-        self.threadpool = QtCore.QThreadPool()
-        self.threadpool.setMaxThreadCount(2)
-
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.request_server_status)
-        self.timer.start(15000)  # 5000 milliseconds = 5 seconds
-        self.request_server_status()
-
-        self.setLayout(layout)
-
-    def request_server_status(self):
-        if not self.window().isMinimized():
-            self.game_task = threads.ServerStatusTask("game")
-            self.game_task.signals.game_server_status.connect(
-                self.set_game_server_status
-            )
-
-            self.login_task = threads.ServerStatusTask("login")
-            self.login_task.signals.login_server_status.connect(
-                self.set_login_server_status
-            )
-            self.threadpool.start(self.game_task)
-            self.threadpool.start(self.login_task)
-
-    def set_game_server_status(self, alive):
-        style = """
-                font-size: 16px;
-                margin-bottom: 2px;
-                font-weight: bold;
-        """
-        if alive:
-            current_style = style + "color: green;"
-            self.game_server_status_label.setText("ONLINE")
-            self.game_server_status_label.setStyleSheet(current_style)
-        else:
-            current_style = style + "color: red;"
-            self.game_server_status_label.setText("OFFLINE")
-            self.game_server_status_label.setStyleSheet(current_style)
-
-    def set_login_server_status(self, alive):
-        style = """
-                font-size: 16px;
-                margin-bottom: 2px;
-                font-weight: bold;
-        """
-        if alive:
-            current_style = style + "color: green;"
-            self.login_server_status_label.setText("ONLINE")
-            self.login_server_status_label.setStyleSheet(current_style)
-        else:
-            current_style = style + "color: red;"
-            self.login_server_status_label.setText("OFFLINE")
-            self.login_server_status_label.setStyleSheet(current_style)
+version = "v0.1.4"
 
 
 class Launcher(QMainWindow):
@@ -257,10 +80,11 @@ class Launcher(QMainWindow):
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(0)
         self.button_layout = QHBoxLayout()
+        self.center_layout = QHBoxLayout()
         self.progress_bar_layout = QVBoxLayout()
         self.progress_bar_label_layout = QHBoxLayout()
         top_bar_layout = QHBoxLayout()
-        self.server_status_bar = ServerStatusBar(self)
+        self.server_status_bar = ui.ServerStatusBar(self)
         self.create_top_bar(top_bar_layout)
 
         # Create widgets
@@ -320,20 +144,27 @@ class Launcher(QMainWindow):
         self.button_layout.addWidget(self.start_button)
         self.main_layout.addLayout(top_bar_layout)
         self.main_layout.addWidget(self.server_status_bar)
-        self.login = Login(self.configuration, self.width * 0.2)
+        self.login = ui.Login(self.configuration, self.width * 0.2)
 
-        self.login.setContentsMargins(0, 0, 0, self.height * 0.07)
         if not self.configuration.get("save_credentials", False):
             self.login.hide()
-        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.main_layout.addItem(spacer)
-        self.main_layout.addWidget(self.login)
+
+        self.center_layout.addWidget(self.login)
+        self.center_layout.setContentsMargins(0, 0, 20, self.height * 0.07)
+        self.center_layout.addItem(
+            QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        )
+        self.main_layout.addLayout(self.center_layout)
         dialog_created = self.create_installation_dialog()
         if not dialog_created:
             self.button_layout.setContentsMargins(0, 0, 0, self.height * 0.01)
         else:
             self.button_layout.setContentsMargins(0, 10, 0, self.height * 0.01)
 
+        news_tab = ui.NewsTab(self, self.width * 0.5, self.height * 0.5)
+
+        self.center_layout.addWidget(news_tab)
+        self.center_layout.setAlignment(Qt.AlignRight)
         self.main_layout.addLayout(self.button_layout)
 
         if self.start_button.text() == "PLAY":
@@ -421,6 +252,13 @@ class Launcher(QMainWindow):
         }
         """
         )
+
+    def open_settings_dialog(self):
+        # Create the settings dialog and show it
+        settings_dialog = ui.SettingsDialog(
+            self, settings=self.configuration, basedir=basedir
+        )
+        settings_dialog.exec()
 
     def set_save_credentials(self):
         if self.save_credentials.isChecked():
@@ -539,6 +377,7 @@ class Launcher(QMainWindow):
         )
         self.minimize_button.setFlat(True)
         self.minimize_button.clicked.connect(self.minimize_launcher)
+
         button_style = """
             QPushButton#minimize {
                 background-color: rgba(0, 0, 0, 0);
@@ -558,7 +397,43 @@ class Launcher(QMainWindow):
         self.minimize_button.setCursor(Qt.PointingHandCursor)
         self.minimize_button.setStyleSheet(button_style)
         self.minimize_button.setMaximumHeight(0.015 * self.height)
-        layout.addWidget(self.minimize_button)
+
+        self.settings_button = QPushButton(self)
+        self.settings_button.setGeometry(
+            self.width * 0.94, self.height * 0.01, self.width * 0.02, self.width * 0.02
+        )
+
+        self.settings_button.setAutoFillBackground(False)
+        self.settings_button.setText("")
+        self.settings_button.setObjectName("settings")
+        self.settings_button.setIcon(
+            QIcon(os.path.join(basedir, "images", "icons8-settings-64.png"))
+        )
+        self.settings_button.setIconSize(
+            QtCore.QSize(self.width * 0.02, self.width * 0.02)
+        )
+        self.settings_button.setFlat(True)
+        self.settings_button.clicked.connect(self.open_settings_dialog)
+
+        button_style = """
+            QPushButton#settings {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#settings:focus {
+                background-color: rgba(0, 0, 0, 0);
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton#settings::icon {
+                margin-right: 0px;
+                color: white;
+            }
+        """
+
+        self.settings_button.setCursor(Qt.PointingHandCursor)
+        self.settings_button.setStyleSheet(button_style)
 
         self.quit_button = QPushButton(self)
         self.quit_button.setGeometry(
@@ -593,6 +468,9 @@ class Launcher(QMainWindow):
 
         self.quit_button.setCursor(Qt.PointingHandCursor)
         self.quit_button.setStyleSheet(button_style)
+
+        layout.addWidget(self.minimize_button)
+        layout.addWidget(self.settings_button)
         layout.addWidget(self.quit_button)
 
         layout.setSpacing(20)
@@ -690,7 +568,7 @@ class Launcher(QMainWindow):
             self.task.pause()
 
     def create_runnable(self, *args, **kwargs):
-        self.task = threads.BackgroundTask(*args, **kwargs)
+        self.task = threads.BackgroundTask(*args, **kwargs, settings=self.configuration)
         self.task.signals.progress_update.connect(self.update_progress)
         self.task.signals.progress_label_update.connect(self.update_progress_label)
         self.task.signals.finished_download.connect(self.download_next_or_stop)
@@ -854,6 +732,10 @@ class Launcher(QMainWindow):
                     self.configuration.get("file_versions", {}).get(file, ""),
                 )
                 and full_file not in donwload_queue
+                and (
+                    self.configuration.get("install_in_progress", False)
+                    or not self.configuration.get("ignore_updates", False)
+                )
             ):
                 donwload_queue.append(full_file)
         self.configuration["download_queue"] = donwload_queue
@@ -1086,6 +968,7 @@ class Launcher(QMainWindow):
         self.install_task = threads.InstallWoWTask(
             pathlib.Path(self.configuration["installation_path"]),
             pathlib.Path(dest_path),
+            self.configuration.get("delete_client_zip_after_install", False),
         )
         self.install_task.signals.install_finished.connect(self.finish_base_install)
         self.install_task.start()
