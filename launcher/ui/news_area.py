@@ -202,30 +202,42 @@ class NewsTab(QTabWidget):
         )
 
     def request_news(self):
-        self.news_task = threads.NewsTask("news")
-        self.news_task.signals.news.connect(self.set_news)
+        news_task = threads.NewsTask("news")
+        news_task.signals.news.connect(self.set_news)
 
-        self.changelog_task = threads.NewsTask("changelog")
-        self.changelog_task.signals.changelog.connect(self.set_changelog)
+        changelog_task = threads.NewsTask("changelog")
+        changelog_task.signals.changelog.connect(self.set_changelog)
 
-        self.launcher_news_task = threads.NewsTask("launcher-news")
-        self.launcher_news_task.signals.launcher_news.connect(self.set_launcher_news)
+        launcher_news_task = threads.NewsTask("launcher-news")
+        launcher_news_task.signals.launcher_news.connect(self.set_launcher_news)
 
-        self.threadpool.start(self.news_task)
-        self.threadpool.start(self.changelog_task)
-        self.threadpool.start(self.launcher_news_task)
+        self.threadpool.start(news_task)
+        self.threadpool.start(changelog_task)
+        self.threadpool.start(launcher_news_task)
 
     def set_news(self, news):
+        if len(news) == 0:
+            news_task = threads.NewsTask("news")
+            news_task.signals.news.connect(self.set_news)
+            return self.threadpool.start(news_task)
         news = [{"timestamp": n[0], "content": n[1]} for n in news]
         logger.info("Setting news")
         self.news_area.set_news(news)
 
     def set_changelog(self, news):
+        if len(news) == 0:
+            changelog_task = threads.NewsTask("changelog")
+            changelog_task.signals.changelog.connect(self.set_changelog)
+            return self.threadpool.start(changelog_task)
         news = [{"timestamp": n[0], "content": n[1]} for n in news]
         logger.info("Setting changelog")
         self.changelog_area.set_news(news)
 
     def set_launcher_news(self, news):
+        if len(news) == 0:
+            launcher_news_task = threads.NewsTask("launcher-news")
+            launcher_news_task.signals.launcher_news.connect(self.set_launcher_news)
+            return self.threadpool.start(launcher_news_task)
         news = [{"timestamp": n[0], "content": n[1]} for n in news]
         logger.info("Setting launcher news")
         self.launcher_area.set_news(news)
