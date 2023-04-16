@@ -9,7 +9,7 @@ from typing import Optional
 from pynput.keyboard import Key
 from PySide6 import QtCore
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QColor, QCursor, QFont, QIcon, QPalette, QPixmap, Qt
+from PySide6.QtGui import QColor, QCursor, QIcon, QPalette, QPixmap, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 import settings
 from launcher import credentials, download, threads, ui, utils
 from launcher.config import Config
+from launcher.ui import fonts
 
 basedir = os.path.dirname(__file__)
 
@@ -69,13 +70,6 @@ class Launcher(QMainWindow):
         # Get the global QThreadPool instance
         self.task = None
 
-        # Create a font and set it as the label's font
-        self.font = QFont()
-        self.font.setPointSize(12)  # Set an initial font size
-
-        self.font_small = QFont()
-        self.font_small.setPointSize(8)  # Set an initial font size
-
         # Create layouts
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(0)
@@ -91,7 +85,7 @@ class Launcher(QMainWindow):
         self.progress_bar_label = QLabel("")
         self.progress_bar_label.setObjectName("progress_label")
         self.progress_bar_label.setMinimumHeight(self.height * 0.05)
-        self.progress_bar_label.setFont(self.font_small)
+        self.progress_bar_label.setFont(fonts.SMALL)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progress")
@@ -100,7 +94,7 @@ class Launcher(QMainWindow):
 
         self.save_credentials = QCheckBox()
         self.save_credentials.setText("SAVE CREDENTIALS")
-        self.save_credentials.setFont(self.font_small)
+        self.save_credentials.setFont(fonts.SMALL)
         self.save_credentials.setObjectName("save_credentials")
         self.save_credentials.setLayoutDirection(Qt.RightToLeft)
         self.save_credentials.setChecked(
@@ -110,7 +104,7 @@ class Launcher(QMainWindow):
 
         self.autoplay_in_label = QLabel("")
         self.autoplay_in_label.setObjectName("autoplay_in_label")
-        self.autoplay_in_label.setFont(self.font_small)
+        self.autoplay_in_label.setFont(fonts.SMALL)
         self.autoplay_in_label.setStyleSheet(
             """
             color: white!important;
@@ -120,7 +114,7 @@ class Launcher(QMainWindow):
 
         self.autoplay = QCheckBox()
         self.autoplay.setText("AUTO-PLAY")
-        self.autoplay.setFont(self.font_small)
+        self.autoplay.setFont(fonts.SMALL)
         self.autoplay.setObjectName("autoplay")
         self.autoplay.setLayoutDirection(Qt.RightToLeft)
         self.autoplay.setChecked(self.configuration.get("autoplay", False))
@@ -325,7 +319,7 @@ class Launcher(QMainWindow):
         self.official_site_link.setObjectName("official_site_link")
         self.official_site_link.setCursor(QCursor(Qt.PointingHandCursor))
         self.official_site_link.setOpenExternalLinks(True)
-        self.official_site_link.setFont(self.font)
+        self.official_site_link.setFont(fonts.NORMAL)
         layout.addWidget(self.official_site_link)
 
         self.register_site_link = QLabel(
@@ -335,7 +329,7 @@ class Launcher(QMainWindow):
         self.register_site_link.setObjectName("register_site_link")
         self.register_site_link.setCursor(QCursor(Qt.PointingHandCursor))
         self.register_site_link.setOpenExternalLinks(True)
-        self.register_site_link.setFont(self.font)
+        self.register_site_link.setFont(fonts.NORMAL)
         layout.addWidget(self.register_site_link)
 
         self.discord_site_link = QLabel(
@@ -345,7 +339,7 @@ class Launcher(QMainWindow):
         self.discord_site_link.setObjectName("discord_site_link")
         self.discord_site_link.setCursor(QCursor(Qt.PointingHandCursor))
         self.discord_site_link.setOpenExternalLinks(True)
-        self.discord_site_link.setFont(self.font)
+        self.discord_site_link.setFont(fonts.NORMAL)
         layout.addWidget(self.discord_site_link)
 
         self.source_code = QLabel(
@@ -356,7 +350,7 @@ class Launcher(QMainWindow):
         self.source_code.setObjectName("source_code")
         self.source_code.setCursor(QCursor(Qt.PointingHandCursor))
         self.source_code.setOpenExternalLinks(True)
-        self.source_code.setFont(self.font)
+        self.source_code.setFont(fonts.NORMAL)
         layout.addWidget(self.source_code)
 
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
@@ -497,7 +491,7 @@ class Launcher(QMainWindow):
             self.start_button.setMinimumHeight(self.height * 0.07)
             self.start_button.setMinimumWidth(self.width * 0.2)
             self.start_button.setCursor(QCursor(Qt.PointingHandCursor))
-            self.start_button.setFont(self.font)
+            self.start_button.setFont(fonts.NORMAL)
 
         if self.check_first_time_user():
             logger.info("Setting interaction button to INSTALL")
@@ -522,14 +516,14 @@ class Launcher(QMainWindow):
             self.installation_path_label = QLabel(
                 "<p style='color:white;'>Installation Path: </p>"
             )
-            self.installation_path_label.setFont(self.font)
+            self.installation_path_label.setFont(fonts.NORMAL)
             self.installation_path_text = QLineEdit()
             self.installation_path_text.setText(
                 self.configuration.get(
                     "installation_path", os.path.join(os.getcwd(), "WoW Duskhaven")
                 )
             )
-            self.installation_path_text.setFont(self.font)
+            self.installation_path_text.setFont(fonts.NORMAL)
             self.installation_path_text.setReadOnly(True)
 
             self.browse_button = QPushButton("Browse")
@@ -537,7 +531,7 @@ class Launcher(QMainWindow):
             self.browse_button.setMinimumHeight(self.height * 0.07)
             self.browse_button.setMinimumWidth(self.width * 0.2)
             self.browse_button.setCursor(QCursor(Qt.PointingHandCursor))
-            self.browse_button.setFont(self.font)
+            self.browse_button.setFont(fonts.NORMAL)
 
             self.installation_path_layout = QHBoxLayout()
             self.installation_path_layout.addWidget(self.installation_path_label)
