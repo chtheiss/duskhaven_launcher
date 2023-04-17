@@ -1,4 +1,6 @@
+from PySide6.QtGui import QCursor, Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QGridLayout,
     QLabel,
     QLineEdit,
@@ -8,12 +10,12 @@ from PySide6.QtWidgets import (
 )
 
 from launcher import credentials
+from launcher.ui import fonts
 
 
 class Login(QWidget):
-    def __init__(self, app_config, max_width):
-        super().__init__()
-        self.app_config = app_config
+    def __init__(self, max_width, parent=None):
+        super().__init__(parent)
         self.setMaximumWidth(max_width)
         layout = QGridLayout()
 
@@ -63,8 +65,8 @@ class Login(QWidget):
         layout.addItem(
             QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding), 0, 0
         )
-        layout.addWidget(label_name, 1, 0)
-        layout.addWidget(self.lineEdit_username, 2, 0)
+        layout.addWidget(label_name, 0, 0, 1, 2)
+        layout.addWidget(self.lineEdit_username, 1, 0, 1, 2)
 
         label_password = QLabel("<p> PASSWORD </p>")
         label_password.setStyleSheet(label_name_style)
@@ -76,8 +78,34 @@ class Login(QWidget):
         self.lineEdit_password.textChanged.connect(self.password_editing_finished)
         self.lineEdit_password.setEchoMode(QLineEdit.Password)
 
-        layout.addWidget(label_password, 3, 0)
-        layout.addWidget(self.lineEdit_password, 4, 0)
+        layout.addWidget(label_password, 2, 0, 1, 2)
+        layout.addWidget(self.lineEdit_password, 3, 0, 1, 2)
+
+        if not self.window().configuration.get("save_credentials", False):
+            self.lineEdit_username.setDisabled(True)
+            self.lineEdit_password.setDisabled(True)
+
+        self.forgot_password_label = QLabel()
+        self.forgot_password_label.setText(
+            "<a style='color:white; text-decoration: none; font-weight: bold;' "
+            "href='https://duskhaven.net/'>Forgot your password?</a>"
+        )
+        self.forgot_password_label.setCursor(QCursor(Qt.PointingHandCursor))
+        self.forgot_password_label.setOpenExternalLinks(True)
+        self.forgot_password_label.setFont(fonts.SMALL)
+
+        self.save_credentials = QCheckBox()
+        self.save_credentials.setText("Remember Credentials")
+        self.save_credentials.setFont(fonts.SMALL)
+        self.save_credentials.setLayoutDirection(Qt.RightToLeft)
+        self.save_credentials.setChecked(
+            self.window().configuration.get("save_credentials", False)
+        )
+        self.save_credentials.toggled.connect(self.set_save_credentials)
+        self.save_credentials.setStyleSheet("color: white;")
+
+        layout.addWidget(self.save_credentials, 4, 1, 1, 1)
+        layout.addWidget(self.forgot_password_label, 4, 0, 1, 1)
 
         self.setLayout(layout)
 
@@ -86,3 +114,19 @@ class Login(QWidget):
 
     def password_editing_finished(self):
         credentials.set_password(self.lineEdit_password.text())
+
+    def set_save_credentials(self):
+        if self.save_credentials.isChecked():
+            self.window().configuration["save_credentials"] = True
+            self.window().configuration.save()
+            self.lineEdit_username.setEnabled(True)
+            self.lineEdit_password.setEnabled(True)
+        else:
+            self.window().configuration["save_credentials"] = False
+            self.window().configuration.save()
+            self.lineEdit_username.setText("")
+            self.lineEdit_password.setText("")
+            credentials.delete_password()
+            credentials.delete_account_name()
+            self.lineEdit_username.setEnabled(False)
+            self.lineEdit_password.setEnabled(False)

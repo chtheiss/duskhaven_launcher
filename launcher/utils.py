@@ -3,10 +3,16 @@ import logging
 import os
 import pathlib
 import shutil
+import subprocess
+import sys
+import time
 import zipfile
 
 import requests
+from pynput.keyboard import Key
+from PySide6.QtWidgets import QApplication
 
+from launcher import credentials, download, version
 from launcher.config import Config
 
 logging.basicConfig(
@@ -157,8 +163,94 @@ def get_latest_release():
     data = response.json()
 
     # Extract the tag name and asset names
-    tag_name = data["tag_name"]
+    try:
+        tag_name = data["tag_name"]
+    except KeyError:
+        return (version.version, [])
     assets = [asset for asset in data["assets"]]
 
     # Return the results as a tuple
     return (tag_name, assets)
+
+
+def add_outdated_files_to_queue(configuration):
+    install_folder = pathlib.Path(configuration["installation_path"])
+    donwload_queue = configuration.get("download_queue", [])
+    dest_paths = [
+        install_folder / "wow.exe",
+        install_folder / "Data" / "patch-5.MPQ",
+        install_folder / "Data" / "patch-A.MPQ",
+        install_folder / "Data" / "patch-Z.mpq",
+    ]
+    for dest_path in dest_paths:
+        file = str(dest_path.name)
+        if dest_path.parent.name == "Data":
+            full_file = f"Data/{file}"
+        else:
+            full_file = file
+        url = Config.LINKS[full_file]
+        if (
+            download.file_requires_update(
+                url,
+                dest_path,
+                configuration.get("file_versions", {}).get(file, ""),
+            )
+            and full_file not in donwload_queue
+            and (
+                configuration.get("install_in_progress", False)
+                or not configuration.get("ignore_updates", False)
+            )
+        ):
+            donwload_queue.append(full_file)
+    configuration["download_queue"] = donwload_queue
+    configuration.save()
+
+
+def start_game(configuration):
+    logger.info("Starting game")
+    password_ = None
+    if configuration.get("save_credentials", False):
+        password_ = credentials.get_password()
+        credentials.update_account_name(
+            pathlib.Path(configuration["installation_path"]) / "WTF" / "Config.wtf",
+            credentials.get_account_name(),
+        )
+
+    if sys.platform.startswith("win"):
+        subprocess.Popen([pathlib.Path(configuration["installation_path"]) / "wow.exe"])
+    elif sys.platform.startswith("linux"):
+        # if you prefer, these logging lines can be removed
+        logger.info("Linux support is in beta")
+        logger.info("Wine is required")
+        logger.info(
+            "Proper prior setup of wine and related environment variables "
+            "is highly recommended"
+        )
+        subprocess.Popen(
+            [
+                "wine",
+                pathlib.Path(configuration["installation_path"]) / "wow.exe",
+            ]
+        )
+    else:
+        logger.error(f"{sys.platform} is completely unsupported!")
+        logger.info("Exiting!")
+
+    if password_ is None:
+        return QApplication.quit()
+
+    if sys.platform.startswith("linux") or sys.platform.startswith("win"):
+        password_wait_timer = configuration.get("password_wait_timer")
+        if password_wait_timer is None:
+            configuration.set("password_wait_timer", 5)
+            configuration.save()
+        logger.info(
+            "Waiting "
+            + str(configuration.get("password_wait_timer"))
+            + " seconds before trying to enter password"
+        )
+        time.sleep(configuration["password_wait_timer"])
+        credentials.type_password(password_)
+        credentials.type_key(Key.enter)
+
+    QApplication.quit()

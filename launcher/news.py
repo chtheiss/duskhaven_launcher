@@ -17,12 +17,20 @@ def convert_timestamp_to_local_time(timestamp):
 
 def fetch_announcements():
     url = "https://duskhaven-news.glitch.me/announcements"
-    return fetch_news(url)
+    try:
+        news = fetch_news(url)
+    except requests.exceptions.ConnectionError:
+        return []
+    return news
 
 
 def fetch_changelog():
     url = "https://duskhaven-news.glitch.me/changelog"
-    return fetch_news(url)
+    try:
+        news = fetch_news(url)
+    except requests.exceptions.ConnectionError:
+        return []
+    return news
 
 
 def fetch_news(url):
@@ -67,6 +75,9 @@ def get_release_notes():
     # Make the API request and parse the response as JSON
     response = requests.get(url)
     data = response.json()
+
+    if "message" in data and data["message"].startswith("API rate limit exceeded for"):
+        return []
 
     release_notes = [
         {

@@ -1,7 +1,7 @@
 import logging
 
 from PySide6 import QtCore
-from PySide6.QtGui import QPalette, Qt
+from PySide6.QtGui import Qt
 from PySide6.QtWidgets import (
     QFrame,
     QLabel,
@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from launcher import threads
-from launcher.ui import fonts
+from launcher.ui import fonts, helpers
 
 logging.basicConfig(
     filename="launcher.log",
@@ -47,28 +47,12 @@ class NewsWidget(QWidget):
 
             self.layout.addWidget(news_time)
             self.layout.addWidget(news)
-            self.layout.addWidget(self.create_divider())
+            self.layout.addWidget(helpers.create_divider())
 
     def set_news(self, news):
         self.news = news
         logger.info("News widget creating news")
         self.create_news()
-
-    def create_divider(self):
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        palette = line.palette()
-        palette.setColor(QPalette.WindowText, Qt.white)
-        line.setPalette(palette)
-        line.setFixedHeight(1)
-        line.setStyleSheet(
-            """
-            QFrame {
-                margin: 0px;
-            }
-            """
-        )
-        return line
 
 
 class NewsArea(QScrollArea):
@@ -127,7 +111,8 @@ class NewsArea(QScrollArea):
             }"""
         )
         self.setWidget(self.news_widget)
-        self.setStyleSheet("QScrollArea { background-color: rgba(0, 0, 29, 220); }")
+        # self.setStyleSheet("QScrollArea { background-color: rgba(34, 59, 98, 220); }")
+        self.setStyleSheet("QScrollArea { background-color: rgba(27, 47, 78, 220); }")
 
     def set_news(self, news):
         logger.info("News area setting news")
@@ -148,8 +133,9 @@ class NewsTab(QTabWidget):
         self.launcher_area.setMaximumWidth(width)
 
         self.tabBar().setCursor(Qt.PointingHandCursor)
-        self.setMaximumWidth(width)
-        self.setMaximumHeight(height)
+        # self.setMaximumWidth(width)
+        # self.setMaximumHeight(height)
+        self.setMinimumSize(0, height)
         self.addTab(self.news_area, "LATEST NEWS")
         self.addTab(self.changelog_area, "CHANGELOG")
         self.addTab(self.launcher_area, "LAUNCHER NEWS")

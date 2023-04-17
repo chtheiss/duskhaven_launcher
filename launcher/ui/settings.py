@@ -6,11 +6,10 @@ from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCursor, QPalette
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
-    QFrame,
     QHBoxLayout,
     QLabel,
     QSizePolicy,
@@ -20,15 +19,14 @@ from PySide6.QtWidgets import (
 )
 
 from launcher import credentials
-from launcher.ui import fonts
+from launcher.ui import fonts, helpers
 from launcher.ui.button import Button
 from launcher.ui.quit_button import QuitButton
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, main_window, settings, basedir):
+    def __init__(self, main_window, basedir):
         super().__init__()
-        self.settings = settings
         self.basedir = Path(basedir)
         self.main_window = main_window
 
@@ -38,7 +36,9 @@ class SettingsDialog(QDialog):
         self._width, self._height = self.adjust_size()
         self.setWindowFlags(Qt.FramelessWindowHint)
 
-        self.installation_path = Path(self.settings.get("installation_path", ""))
+        self.installation_path = Path(
+            self.window().configuration.get("installation_path", "")
+        )
 
         layout = QVBoxLayout()
 
@@ -125,8 +125,8 @@ class SettingsDialog(QDialog):
             "This will not affect your game installation."
         )
         if (
-            self.settings.get("install_in_progress", False)
-            or self.settings.get("installation_path", None) is None
+            self.window().configuration.get("install_in_progress", False)
+            or self.window().configuration.get("installation_path", None) is None
         ):
             clear_launcher_cache_button.setEnabled(False)
             clear_launcher_cache_button.setToolTip(
@@ -143,7 +143,9 @@ class SettingsDialog(QDialog):
         bandwidth_layout = QHBoxLayout()
         bandwidth_layout.setAlignment(Qt.AlignLeft)
         self.limit_bandwidth = QCheckBox()
-        self.limit_bandwidth.setChecked(self.settings.get("limit_bandwidth", False))
+        self.limit_bandwidth.setChecked(
+            self.window().configuration.get("limit_bandwidth", False)
+        )
         self.limit_bandwidth.setText("Limit bandwidth to:")
         self.limit_bandwidth.setFont(fonts.NORMAL)
         self.limit_bandwidth.toggled.connect(self.set_limit_bandwidth)
@@ -152,22 +154,26 @@ class SettingsDialog(QDialog):
         self.bandwidth.setRange(0, 10000000)
         self.bandwidth.setSingleStep(10)
         self.bandwidth.setSuffix(" KB/s")
-        self.bandwidth.setValue(self.settings.get("bandwidth", 0))
-        self.bandwidth.setEnabled(self.settings.get("limit_bandwidth", False))
+        self.bandwidth.setValue(self.window().configuration.get("bandwidth", 0))
+        self.bandwidth.setEnabled(
+            self.window().configuration.get("limit_bandwidth", False)
+        )
         self.bandwidth.valueChanged.connect(self.set_bandwidth)
         bandwidth_layout.addWidget(self.limit_bandwidth)
         bandwidth_layout.addWidget(self.bandwidth)
 
         self.ignore_updates = QCheckBox()
         self.ignore_updates.setText("Do not check for Game updates")
-        self.ignore_updates.setChecked(self.settings.get("ignore_updates", False))
+        self.ignore_updates.setChecked(
+            self.window().configuration.get("ignore_updates", False)
+        )
         self.ignore_updates.setFont(fonts.NORMAL)
         self.ignore_updates.toggled.connect(self.set_ignore_updates)
 
         self.delete_client_zip = QCheckBox()
         self.delete_client_zip.setText("Delete wow-client.zip after installation")
         self.delete_client_zip.setChecked(
-            self.settings.get("delete_client_zip_after_install", False)
+            self.window().configuration.get("delete_client_zip_after_install", False)
         )
         self.delete_client_zip.setFont(fonts.NORMAL)
         self.delete_client_zip.toggled.connect(self.set_delete_client_zip)
@@ -175,10 +181,10 @@ class SettingsDialog(QDialog):
         layout.addLayout(top_bar_layout)
         layout.addWidget(installation_label)
         layout.addLayout(installation_layout)
-        layout.addWidget(self.create_divider())
+        layout.addWidget(helpers.create_divider())
         layout.addWidget(cache_label)
         layout.addLayout(cache_layout)
-        layout.addWidget(self.create_divider())
+        layout.addWidget(helpers.create_divider())
         layout.addWidget(download_label)
         layout.addLayout(bandwidth_layout)
         layout.addWidget(self.ignore_updates)
@@ -211,22 +217,6 @@ class SettingsDialog(QDialog):
         )
 
         self.setLayout(layout)
-
-    def create_divider(self):
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        palette = line.palette()
-        palette.setColor(QPalette.WindowText, Qt.white)
-        line.setPalette(palette)
-        line.setFixedHeight(1)
-        line.setStyleSheet(
-            """
-            QFrame {
-                margin: 0px;
-            }
-            """
-        )
-        return line
 
     def delete_cache(self):
         shutil.rmtree(self.installation_path / "Cache")
@@ -271,35 +261,37 @@ class SettingsDialog(QDialog):
             self.setCursor(Qt.ArrowCursor)
 
     def close(self):
-        self.settings.save()
+        self.window().configuration.save()
         self.accept()
 
     def set_ignore_updates(self):
-        self.settings["ignore_updates"] = self.ignore_updates.isChecked()
-        self.settings.save()
+        self.window().configuration["ignore_updates"] = self.ignore_updates.isChecked()
+        self.window().configuration.save()
 
     def set_limit_bandwidth(self):
-        self.settings["limit_bandwidth"] = self.limit_bandwidth.isChecked()
+        self.window().configuration[
+            "limit_bandwidth"
+        ] = self.limit_bandwidth.isChecked()
         if self.limit_bandwidth.isChecked():
             self.bandwidth.setEnabled(True)
         else:
             self.bandwidth.setEnabled(False)
-        self.settings.save()
+        self.window().configuration.save()
 
     def set_bandwidth(self):
         if self.limit_bandwidth.isChecked():
-            self.settings["bandwidth"] = self.bandwidth.value()
-            self.settings.save()
+            self.window().configuration["bandwidth"] = self.bandwidth.value()
+            self.window().configuration.save()
 
     def delete_launcher_cache(self):
         log_path = self.basedir / "launcher.log"
         if log_path.exists():
             log_path.unlink()
-        entities_to_remove = list(self.settings)
+        entities_to_remove = list(self.window().configuration)
         for key in entities_to_remove:
             if key not in ["installation_path"]:
-                self.settings.pop(key, None)
-        self.settings.save()
+                self.window().configuration.pop(key, None)
+        self.window().configuration.save()
 
         self.main_window.login.lineEdit_username.setText("")
         self.main_window.login.lineEdit_password.setText("")
@@ -307,7 +299,7 @@ class SettingsDialog(QDialog):
         credentials.delete_password()
 
     def set_delete_client_zip(self):
-        self.settings[
+        self.window().configuration[
             "delete_client_zip_after_install"
         ] = self.delete_client_zip.isChecked()
-        self.settings.save()
+        self.window().configuration.save()
