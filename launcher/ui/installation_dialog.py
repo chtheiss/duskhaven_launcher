@@ -43,4 +43,5 @@ class InstallationDialog(QWidget):
             self.window().configuration["installation_path"] = selected_directory
             self.installation_path_text.setText(selected_directory)
             self.window().configuration.save()
+            self.window().start_button.setEnabled(False)
             self.window().check_wow_install()

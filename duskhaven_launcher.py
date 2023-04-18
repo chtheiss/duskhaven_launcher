@@ -398,10 +398,11 @@ class Launcher(QMainWindow):
             pathlib.Path(self.configuration["installation_path"])
         ):
             utils.add_outdated_files_to_queue(self.configuration)
-            if hasattr(self, "browse_button"):
-                self.browse_button.setVisible(False)
-                self.installation_path_label.setVisible(False)
-                self.installation_path_text.setVisible(False)
+            if hasattr(self, "installation_dialog"):
+                self.installation_dialog.deleteLater()
+                self.main_layout.addWidget(self.progress_bar, 4, 0, 1, 2)
+                self.main_layout.addWidget(self.start_button, 4, 2, 1, 1)
+                self.progress_bar.show()
             # If any file needs update -> update
             if len(self.configuration["download_queue"]) > 0:
                 self.start_button.clicked.disconnect()
