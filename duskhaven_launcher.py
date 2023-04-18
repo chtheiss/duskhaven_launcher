@@ -67,6 +67,10 @@ class Launcher(QMainWindow):
         self.login = ui.Login(self.width * 0.3, self)
         self.progress_bar = ui.ProgressBar(self)
         self.progress_bar.hide()
+
+        if "installation_path" in self.configuration:
+            utils.add_outdated_files_to_queue(self.configuration)
+
         self.create_start_button()
 
         self.main_layout.addWidget(self.top_bar, 0, 0, 1, 3)
@@ -94,9 +98,6 @@ class Launcher(QMainWindow):
         if utils.compare_versions(latest_version, version.version) == 1:
             logger.info(f"New launcher version available: {latest_version}")
             self.update_launcher(latest_assets)
-
-        if "installation_path" in self.configuration:
-            utils.add_outdated_files_to_queue(self.configuration)
 
     def create_start_button(self):
         if not hasattr(self, "start_button"):
