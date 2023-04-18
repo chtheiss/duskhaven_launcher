@@ -4,9 +4,10 @@ from PySide6.QtWidgets import QPushButton
 
 
 class Button(QPushButton):
-    def __init__(self, parent, text, callback):
+    def __init__(self, parent, text, callback=None):
         super().__init__(parent)
-        self.clicked.connect(callback)
+        if callback:
+            self.clicked.connect(callback)
         self.setText(text)
         style = """
             QPushButton {

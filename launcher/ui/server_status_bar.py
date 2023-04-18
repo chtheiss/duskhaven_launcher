@@ -1,3 +1,6 @@
+import datetime
+
+import pytz
 from PySide6 import QtCore
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen
@@ -5,6 +8,97 @@ from PySide6.QtWidgets import QGridLayout, QLabel, QSizePolicy, QWidget
 
 from launcher import threads
 from launcher.ui import helpers
+
+
+def calculate_daily_reset_time():
+    # Set the target timezone to UTC-7
+    target_tz = pytz.timezone("America/Los_Angeles")
+
+    local_tz = datetime.datetime.now(pytz.timezone("UTC")).astimezone().tzinfo
+
+    # Get the current local time
+    now_local = datetime.datetime.now(local_tz)
+
+    # Convert to UTC
+    now_utc = now_local.astimezone(pytz.utc)
+
+    # Set the time to 5:00 am in UTC-7
+    target_time = datetime.time(5, 0)
+    target_dt = datetime.datetime.combine(now_utc.date(), target_time)
+    # Convert to the target timezone
+    target_dt_tz = target_tz.localize(target_dt)
+    if target_dt_tz < now_utc:
+        target_dt_tz += datetime.timedelta(days=1)
+    # Convert back to the local timezone
+    target_dt_local = target_dt_tz.astimezone(local_tz)
+
+    next_weekday = target_dt_local.weekday()
+    next_weekday_name = datetime.date(1900, 1, next_weekday + 1).strftime("%a")
+
+    # Calculate the time difference
+    time_diff = target_dt_local - now_local
+
+    # Get the total number of minutes until the target datetime
+    total_minutes = int(time_diff.total_seconds() / 60)
+
+    # Calculate the number of hours and minutes
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
+    # Return the results as a tuple
+    return (next_weekday_name, target_dt_local.strftime("%H:%M"), hours, minutes)
+
+
+def calculate_weekly_reset_time():
+    # Set the target timezone to UTC-7
+    target_tz = pytz.timezone("America/Los_Angeles")
+
+    local_tz = datetime.datetime.now(pytz.timezone("UTC")).astimezone().tzinfo
+
+    # Get the current local time
+    now_local = datetime.datetime.now(local_tz)
+
+    # Convert to UTC
+    now_utc = now_local.astimezone(pytz.utc)
+
+    # Set the time to 5:00 am in UTC-7 on Tuesday
+    target_time = datetime.time(5, 0)
+    target_dt = datetime.datetime.combine(now_utc.date(), target_time)
+
+    days_until_reset_day = (
+        1 - now_utc.weekday()
+    ) % 7  # calculate days until next Monday
+    # next_monday_date = today + datetime.timedelta(days=days_until_next_monday)
+    target_dt += datetime.timedelta(days=days_until_reset_day)
+
+    # Convert to the target timezone
+    target_dt_tz = target_tz.localize(target_dt)
+
+    # Convert back to the local timezone
+    target_dt_local = target_dt_tz.astimezone(local_tz)
+
+    next_reset_day = target_dt_local.weekday()
+    next_reset_day_name = datetime.date(1900, 1, next_reset_day + 1).strftime("%a")
+
+    # Calculate the time difference
+    time_diff = target_dt_local - now_local
+
+    # Get the total number of minutes until the target datetime
+    total_minutes = int(time_diff.total_seconds() / 60)
+
+    # Calculate the number of days, hours, and minutes
+    days = total_minutes // (60 * 24)
+    hours = (total_minutes // 60) % 24
+    minutes = total_minutes % 60
+
+    # Return the results as a tuple
+    return (
+        next_reset_day_name,
+        target_dt_local.strftime("%H:%M"),
+        days,
+        hours,
+        minutes,
+    )
 
 
 class ServerStatusBar(QWidget):
@@ -59,55 +153,28 @@ class ServerStatusBar(QWidget):
         weekly_reset_timer_label = QLabel()
         weekly_reset_timer_label.setStyleSheet(server_label_style)
 
-        import datetime
-
-        import pytz
-
-        # Set the target timezone to UTC-7
-        target_tz = pytz.timezone("America/Los_Angeles")
-
-        local_tz = datetime.datetime.now(pytz.timezone("UTC")).astimezone().tzinfo
-
-        # Get the current local time
-        now_local = datetime.datetime.now(local_tz)
-
-        # Convert to UTC
-        now_utc = now_local.astimezone(pytz.utc)
-
-        # Set the time to 5:00 am in UTC-7
-        target_time = datetime.time(5, 0)
-        target_dt = datetime.datetime.combine(now_utc.date(), target_time)
-        target_dt += datetime.timedelta(days=1)
-        # Convert to the target timezone
-        target_dt_tz = target_tz.localize(target_dt)
-
-        # Convert back to the local timezone
-        target_dt_local = target_dt_tz.astimezone(local_tz)
-
-        next_weekday = target_dt_local.weekday()
-        next_weekday_name = datetime.date(1900, 1, next_weekday + 1).strftime("%a")
-
-        # Calculate the time difference
-        time_diff = target_dt_local - now_local
-
-        # Get the total number of minutes until the target datetime
-        total_minutes = int(time_diff.total_seconds() / 60)
-
-        # Calculate the number of hours and minutes
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-
-        # Combine the weekday name and time
-        # result = f"{next_weekday_name} {time_str}"
-        daily_reset_label.setText(
-            f"Daily Reset: {next_weekday_name} {target_dt_local.strftime('%H:%M')}"
-        )
+        (
+            next_weekday_name,
+            target_dt_local,
+            hours,
+            minutes,
+        ) = calculate_daily_reset_time()
+        daily_reset_label.setText(f"Daily Reset: {next_weekday_name} {target_dt_local}")
         daily_reset_timer_label.setText(f"{hours:02d}h {minutes:02d}m until reset")
 
+        (
+            next_reset_day_name,
+            target_dt_local,
+            days,
+            hours,
+            minutes,
+        ) = calculate_weekly_reset_time()
         weekly_reset_label.setText(
-            f"Weekly Reset: {next_weekday_name} {target_dt_local.strftime('%H:%M')}"
+            f"Weekly Reset: {next_reset_day_name} {target_dt_local}"
         )
-        weekly_reset_timer_label.setText(f"{hours:02d}h {minutes:02d}m until reset")
+        weekly_reset_timer_label.setText(
+            f"{days:02d}d {hours:02d}h {minutes:02d}m until reset"
+        )
 
         server_layout.addWidget(game_server_label, 0, 0)
         server_layout.addWidget(self.game_server_status_label, 0, 1)

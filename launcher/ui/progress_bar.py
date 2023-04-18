@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from launcher import utils
 from launcher.ui import fonts
 
 
@@ -72,7 +71,7 @@ class Autoplay(QWidget):
         if self.remaining_seconds == 0:
             self.autoplay_timer.stop()  # stop the timer when the countdown is over
             self.autoplay_in_label.setText("")
-            utils.start_game(self.window().configuration)
+            self.window().start_game()
 
 
 class ProgessBarLabel(QWidget):
@@ -112,6 +111,9 @@ class ProgessBarLabel(QWidget):
 
         self.setLayout(layout)
 
+    def update_progress_label(self, info):
+        self.progress_bar_label.setText(info)
+
 
 class ProgressBar(QWidget):
     def __init__(self, parent=None):
@@ -124,6 +126,11 @@ class ProgressBar(QWidget):
         self.progress_bar.setObjectName("progress")
         self.progress_bar.setRange(0, 10000)
         self.progress_bar.setMaximumHeight(self.parent().height * 0.02)
+
+        if self.window().configuration.get("start_button_state", "") == "PLAY":
+            self.progress_bar.setValue(100 * 100)
+            self.progress_bar.setFormat("")
+            self.progress_bar_label.update_progress_label("100%")
 
         layout.addWidget(self.progress_bar_label)
         layout.addWidget(self.progress_bar)
@@ -142,3 +149,8 @@ class ProgressBar(QWidget):
         )
 
         self.setLayout(layout)
+
+    def update_progress(self, percentage):
+        self.progress_bar.setValue(percentage * 100)
+        # displaying the decimal value
+        self.progress_bar.setFormat("")

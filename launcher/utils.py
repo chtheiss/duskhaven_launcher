@@ -3,16 +3,11 @@ import logging
 import os
 import pathlib
 import shutil
-import subprocess
-import sys
-import time
 import zipfile
 
 import requests
-from pynput.keyboard import Key
-from PySide6.QtWidgets import QApplication
 
-from launcher import credentials, download, version
+from launcher import download, version
 from launcher.config import Config
 
 logging.basicConfig(
@@ -206,51 +201,6 @@ def add_outdated_files_to_queue(configuration):
     configuration.save()
 
 
-def start_game(configuration):
-    logger.info("Starting game")
-    password_ = None
-    if configuration.get("save_credentials", False):
-        password_ = credentials.get_password()
-        credentials.update_account_name(
-            pathlib.Path(configuration["installation_path"]) / "WTF" / "Config.wtf",
-            credentials.get_account_name(),
-        )
-
-    if sys.platform.startswith("win"):
-        subprocess.Popen([pathlib.Path(configuration["installation_path"]) / "wow.exe"])
-    elif sys.platform.startswith("linux"):
-        # if you prefer, these logging lines can be removed
-        logger.info("Linux support is in beta")
-        logger.info("Wine is required")
-        logger.info(
-            "Proper prior setup of wine and related environment variables "
-            "is highly recommended"
-        )
-        subprocess.Popen(
-            [
-                "wine",
-                pathlib.Path(configuration["installation_path"]) / "wow.exe",
-            ]
-        )
-    else:
-        logger.error(f"{sys.platform} is completely unsupported!")
-        logger.info("Exiting!")
-
-    if password_ is None:
-        return QApplication.quit()
-
-    if sys.platform.startswith("linux") or sys.platform.startswith("win"):
-        password_wait_timer = configuration.get("password_wait_timer")
-        if password_wait_timer is None:
-            configuration.set("password_wait_timer", 5)
-            configuration.save()
-        logger.info(
-            "Waiting "
-            + str(configuration.get("password_wait_timer"))
-            + " seconds before trying to enter password"
-        )
-        time.sleep(configuration["password_wait_timer"])
-        credentials.type_password(password_)
-        credentials.type_key(Key.enter)
-
-    QApplication.quit()
+def check_first_time_user(configuration):
+    # Check if this is the first time the user has run the launcher
+    return not configuration.get("installation_path")

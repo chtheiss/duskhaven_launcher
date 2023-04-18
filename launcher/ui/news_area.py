@@ -51,7 +51,6 @@ class NewsWidget(QWidget):
 
     def set_news(self, news):
         self.news = news
-        logger.info("News widget creating news")
         self.create_news()
 
 
@@ -115,7 +114,6 @@ class NewsArea(QScrollArea):
         self.setStyleSheet("QScrollArea { background-color: rgba(27, 47, 78, 220); }")
 
     def set_news(self, news):
-        logger.info("News area setting news")
         self.news = news
         self.news_widget.set_news(news)
 
@@ -207,7 +205,6 @@ class NewsTab(QTabWidget):
             news_task.signals.news.connect(self.set_news)
             return self.threadpool.start(news_task)
         news = [{"timestamp": n[0], "content": n[1]} for n in news]
-        logger.info("Setting news")
         self.news_area.set_news(news)
 
     def set_changelog(self, news):
@@ -225,5 +222,5 @@ class NewsTab(QTabWidget):
             launcher_news_task.signals.launcher_news.connect(self.set_launcher_news)
             return self.threadpool.start(launcher_news_task)
         news = [{"timestamp": n[0], "content": n[1]} for n in news]
-        logger.info("Setting launcher news")
+
         self.launcher_area.set_news(news)

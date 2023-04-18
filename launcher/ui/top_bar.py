@@ -135,7 +135,7 @@ class TopBar(QWidget):
 
     def open_settings_dialog(self):
         # Create the settings dialog and show it
-        settings_dialog = ui.SettingsDialog(self, basedir=self.basedir)
+        settings_dialog = ui.SettingsDialog(self.basedir, self.window())
         settings_dialog.exec()
 
     def quit_launcher(self):
