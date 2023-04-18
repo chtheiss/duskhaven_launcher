@@ -131,8 +131,6 @@ class NewsTab(QTabWidget):
         self.launcher_area.setMaximumWidth(width)
 
         self.tabBar().setCursor(Qt.PointingHandCursor)
-        # self.setMaximumWidth(width)
-        # self.setMaximumHeight(height)
         self.setMinimumSize(0, height)
         self.addTab(self.news_area, "LATEST NEWS")
         self.addTab(self.changelog_area, "CHANGELOG")
@@ -159,7 +157,7 @@ class NewsTab(QTabWidget):
             }
 
             QTabBar::tab {
-                background-color: #00285B;
+                background-color: rgb(34, 59, 98);
                 color: white;
                 padding: 8px;
                 border-top-left-radius: 4px;
@@ -168,19 +166,19 @@ class NewsTab(QTabWidget):
             }
 
             QTabBar::tab:selected {
-                background-color: #005099;
+                background-color: #365d9a;
                 color: white;
-                border-bottom-color: #005099;
+                border-bottom-color: #365d9a;
             }
 
             QTabBar::tab:!selected:hover {
-                background-color: #0064B8;
-                border: 1px solid #b9b9b9;
+                background-color: #4675be;
+                border: 1px solid #4675be;
             }
 
             QTabBar::tab:selected:hover {
-                background-color: #0078d7;
-                border: 1px solid #0078d7;
+                background-color: #4675be;
+                border: 1px solid #4675be;
             }
             """
         )
