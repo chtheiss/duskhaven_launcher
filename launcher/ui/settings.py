@@ -178,6 +178,23 @@ class SettingsDialog(QDialog):
         self.delete_client_zip.setFont(fonts.NORMAL)
         self.delete_client_zip.toggled.connect(self.set_delete_client_zip)
 
+        password_wait_timer_layout = QHBoxLayout()
+        password_wait_timer_layout.setAlignment(Qt.AlignLeft)
+        password_wait_timer_label = QLabel("Delay until password is entered")
+        password_wait_timer_label.setFont(fonts.NORMAL)
+
+        self.password_wait_timer = QSpinBox()
+        self.password_wait_timer.setRange(0, 10000000)
+        self.password_wait_timer.setSingleStep(1)
+        self.password_wait_timer.setSuffix(" s")
+        self.password_wait_timer.setValue(
+            self.main_window.configuration.get("password_wait_timer", 5)
+        )
+        self.password_wait_timer.valueChanged.connect(self.set_password_wait_timer)
+
+        password_wait_timer_layout.addWidget(password_wait_timer_label)
+        password_wait_timer_layout.addWidget(self.password_wait_timer)
+
         layout.addLayout(top_bar_layout)
         layout.addWidget(installation_label)
         layout.addLayout(installation_layout)
@@ -189,6 +206,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(bandwidth_layout)
         layout.addWidget(self.ignore_updates)
         layout.addWidget(self.delete_client_zip)
+        layout.addLayout(password_wait_timer_layout)
         layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding))
 
         self.setStyleSheet(
@@ -201,6 +219,11 @@ class SettingsDialog(QDialog):
             QCheckBox {
                 color: white;
             }
+
+            QLabel {
+                color: white;
+            }
+
             QSpinBox {
                 background-color: #f5f5f5;
                 border: 1px solid #d8d8d8;
@@ -284,6 +307,12 @@ class SettingsDialog(QDialog):
         if self.limit_bandwidth.isChecked():
             self.main_window.configuration["bandwidth"] = self.bandwidth.value()
             self.main_window.configuration.save()
+
+    def set_password_wait_timer(self):
+        self.main_window.configuration[
+            "password_wait_timer"
+        ] = self.password_wait_timer.value()
+        self.main_window.configuration.save()
 
     def delete_launcher_cache(self):
         entities_to_remove = list(self.main_window.configuration)
