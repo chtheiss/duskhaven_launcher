@@ -1,4 +1,5 @@
 keyring
-PySide6
 pynput
+PySide6
+pytz
 requests

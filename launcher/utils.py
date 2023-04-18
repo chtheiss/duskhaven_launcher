@@ -1,0 +1,206 @@
+import hashlib
+import logging
+import os
+import pathlib
+import shutil
+import zipfile
+
+import requests
+
+from launcher import download, version
+from launcher.config import Config
+
+logging.basicConfig(
+    filename="launcher.log",
+    filemode="a",
+    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
+    datefmt="%H:%M:%S",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger("Utils")
+
+
+def calculate_md5(filepath):
+    with open(filepath, "rb") as file:
+        hash = hashlib.md5()
+        while chunk := file.read(8192):
+            hash.update(chunk)
+    return hash.hexdigest()
+
+
+def check_wow_install(install_folder):
+    files = [
+        "common.MPQ",
+        "common-2.MPQ",
+        "expansion.MPQ",
+        "lichking.MPQ",
+        "patch.MPQ",
+        "patch-2.MPQ",
+        "patch-3.MPQ",
+    ]
+
+    for file in files:
+        data_file = install_folder / "Data" / file
+        logger.info(f"Checking: {data_file}")
+        if not data_file.exists():
+            logger.info(
+                f"The data file {data_file} does not exist. "
+                "Assuming no WoW client is installed."
+            )
+            return False
+    return True
+
+
+def prepare_wow_folder(install_folder, wow_client_zip_path, delete_client_zip=False):
+    successful = True
+    # Extract WoW zip
+    if wow_client_zip_path.exists():
+        logger.info(f"Unzipping {wow_client_zip_path}")
+        with zipfile.ZipFile(wow_client_zip_path, "r") as zip_ref:
+            zip_ref.extractall(install_folder)
+
+    logger.info("Moving files")
+    source_path = install_folder / "WoW 3.3.5/"
+
+    files = source_path.glob("**/*")
+    for file in files:
+        parts = list(file.parts)
+        parts.remove("WoW 3.3.5")
+        destination = pathlib.Path(*parts)
+        logger.info(f"Moving {file}")
+        shutil.move(file, destination)
+    logger.info("Files Moved")
+
+    if len(list(source_path.glob("**/*"))) == 0:
+        logger.info("Removing old directory")
+        try:
+            shutil.rmtree(source_path)
+        except FileNotFoundError:
+            logger.info(f"Folder does not exist: {source_path}")
+
+    original_wow_exe_path = install_folder / "Wow.exe"
+    if os.path.exists(original_wow_exe_path):
+        logger.info("Removing old Wow.exe")
+        os.remove(original_wow_exe_path)
+
+    cinematics = ["wow_fotlk_1024.avi", "wow_wrathgate_1024.avi"]
+    cinematics_folder = install_folder / "Data" / "enUS" / "Interface" / "Cinematics"
+    for cinematic in cinematics:
+        cinematic_path = cinematics_folder / cinematic
+        if cinematic_path.exists():
+            logger.info(f"Removing cinematics file: {cinematic_path}")
+            os.remove(cinematic_path)
+
+    logger.info("Changing realmlist")
+    realm_list_path = install_folder / "Data" / "enUS" / "realmlist.wtf"
+    with open(realm_list_path, "w") as realm_list_file:
+        realm_list_file.write("set realmlist logon.duskhaven.net")
+
+    logger.info("Changing WTF config")
+    create_wtf_config(install_folder)
+
+    # Remove the zip file at the end
+    if successful and delete_client_zip:
+        os.remove(wow_client_zip_path)
+
+    return successful
+
+
+def create_wtf_config(install_folder):
+    wtf_config_path = install_folder / "WTF" / "Config.wtf"
+    if not wtf_config_path.exists():
+        wtf_config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(wtf_config_path, "w") as wtf_config_file:
+            wtf_config_file.writelines(
+                [
+                    f'SET {key} "{value}"\n'
+                    for key, value in Config.WOW_WTF_CONFIG.items()
+                ]
+            )
+
+
+def compare_versions(v1, v2):
+    v1 = v1.removeprefix("v")
+    v2 = v2.removeprefix("v")
+    # Split the version strings into major, minor, and patch components
+    v1_parts = v1.split(".")
+    v2_parts = v2.split(".")
+
+    # Compare major version
+    if int(v1_parts[0]) > int(v2_parts[0]):
+        return 1
+    elif int(v1_parts[0]) < int(v2_parts[0]):
+        return -1
+
+    # Compare minor version
+    if int(v1_parts[1]) > int(v2_parts[1]):
+        return 1
+    elif int(v1_parts[1]) < int(v2_parts[1]):
+        return -1
+
+    # Compare patch version
+    if int(v1_parts[2]) > int(v2_parts[2]):
+        return 1
+    elif int(v1_parts[2]) < int(v2_parts[2]):
+        return -1
+
+    # Versions are equal
+    return 0
+
+
+def get_latest_release():
+    # Construct the URL for the GitHub API request
+    url = "https://api.github.com/repos/chtheiss/duskhaven_launcher/releases/latest"
+
+    # Make the API request and parse the response as JSON
+    response = requests.get(url)
+    data = response.json()
+
+    # Extract the tag name and asset names
+    try:
+        tag_name = data["tag_name"]
+    except KeyError:
+        return (version.version, [])
+    assets = [asset for asset in data["assets"]]
+
+    # Return the results as a tuple
+    return (tag_name, assets)
+
+
+def add_outdated_files_to_queue(configuration):
+    install_folder = pathlib.Path(configuration["installation_path"])
+    donwload_queue = configuration.get("download_queue", [])
+    dest_paths = [
+        install_folder / "wow.exe",
+        install_folder / "Data" / "patch-5.MPQ",
+        install_folder / "Data" / "patch-A.MPQ",
+        install_folder / "Data" / "patch-Z.mpq",
+    ]
+    for dest_path in dest_paths:
+        file = str(dest_path.name)
+        if dest_path.parent.name == "Data":
+            full_file = f"Data/{file}"
+        else:
+            full_file = file
+        url = Config.LINKS[full_file]
+        if (
+            download.file_requires_update(
+                url,
+                dest_path,
+                configuration.get("file_versions", {}).get(file, ""),
+            )
+            and full_file not in donwload_queue
+            and (
+                configuration.get("install_in_progress", False)
+                or not configuration.get("ignore_updates", False)
+            )
+        ):
+            donwload_queue.append(full_file)
+    configuration["download_queue"] = donwload_queue
+    configuration.save()
+
+
+def check_first_time_user(configuration):
+    # Check if this is the first time the user has run the launcher
+    return not configuration.get("installation_path")
