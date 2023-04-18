@@ -67,12 +67,15 @@ def calculate_weekly_reset_time():
 
     days_until_reset_day = (
         1 - now_utc.weekday()
-    ) % 7  # calculate days until next Monday
+    ) % 7  # calculate days until next Tuesday
+    target_dt_tz = target_tz.localize(target_dt)
+
+    if days_until_reset_day == 0 and now_local > target_dt_tz:
+        days_until_reset_day = 7
     # next_monday_date = today + datetime.timedelta(days=days_until_next_monday)
-    target_dt += datetime.timedelta(days=days_until_reset_day)
+    target_dt_tz += datetime.timedelta(days=days_until_reset_day)
 
     # Convert to the target timezone
-    target_dt_tz = target_tz.localize(target_dt)
 
     # Convert back to the local timezone
     target_dt_local = target_dt_tz.astimezone(local_tz)
