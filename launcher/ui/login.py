@@ -102,7 +102,7 @@ class Login(QWidget):
 
         self.forgot_password_label = PasswordQuestionLabel()
         self.forgot_password_label.setText(
-            "<a style='color:white; text-decoration: none; font-weight: bold;' "
+            "<a style='color: #7699cf; text-decoration: none; font-weight: bold;' "
             "href='https://duskhaven.net/'>Forgot your password?</a>"
         )
         self.forgot_password_label.setCursor(QCursor(Qt.PointingHandCursor))
