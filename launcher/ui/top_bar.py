@@ -30,9 +30,11 @@ logger = logging.getLogger("Topbar")
 class LinkLabel(QLabel):
     def __init__(self, text, url, parent=None) -> None:
         super().__init__(parent)
+        self.url = url
+        self.shown_text = text
         self.setText(
-            "<a style='color:white; text-decoration: none; font-weight: bold;' "
-            f"href='{url}'>{text}</a>"
+            "<a style='color: #7699cf; text-decoration: none; font-weight: bold;' "
+            f"href='{url}'>{self.shown_text}</a>"
         )
         self.setCursor(QCursor(Qt.PointingHandCursor))
         self.setOpenExternalLinks(True)
@@ -44,9 +46,26 @@ class LinkLabel(QLabel):
                 padding-left: 5px;
                 padding-right: 5px;
             }
+
+            QLabel:hover {
+                background-color: #7699cf;
+            }
         """
 
         self.setStyleSheet(style)
+
+    def enterEvent(self, event):
+        self.setText(
+            "<a style='color: white; text-decoration: none; font-weight: bold; "
+            "box-shadow: none;' "
+            f"href='{self.url}'>{self.shown_text}</a>"
+        )
+
+    def leaveEvent(self, event):
+        self.setText(
+            "<a style='color: #7699cf; text-decoration: none; font-weight: bold;' "
+            f"href='{self.url}'>{self.shown_text}</a>"
+        )
 
 
 class MenuButton(QPushButton):

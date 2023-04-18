@@ -13,6 +13,21 @@ from launcher import credentials
 from launcher.ui import fonts
 
 
+class PasswordQuestionLabel(QLabel):
+    def enterEvent(self, event):
+        self.setText(
+            "<a style='color: white; text-decoration: none; font-weight: bold; "
+            "box-shadow: none;' "
+            "href='https://duskhaven.net/'>Forgot your password?</a>"
+        )
+
+    def leaveEvent(self, event):
+        self.setText(
+            "<a style='color: #7699cf; text-decoration: none; font-weight: bold;' "
+            "href='https://duskhaven.net/'>Forgot your password?</a>"
+        )
+
+
 class Login(QWidget):
     def __init__(self, max_width, parent=None):
         super().__init__(parent)
@@ -85,7 +100,7 @@ class Login(QWidget):
             self.lineEdit_username.setDisabled(True)
             self.lineEdit_password.setDisabled(True)
 
-        self.forgot_password_label = QLabel()
+        self.forgot_password_label = PasswordQuestionLabel()
         self.forgot_password_label.setText(
             "<a style='color:white; text-decoration: none; font-weight: bold;' "
             "href='https://duskhaven.net/'>Forgot your password?</a>"

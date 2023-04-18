@@ -2,6 +2,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QPushButton
 
+from launcher.ui import fonts
+
 
 class Button(QPushButton):
     def __init__(self, parent, text, callback=None):
@@ -17,7 +19,8 @@ class Button(QPushButton):
                 margin-left: 20px;
                 border-radius: 0px;
                 border: 0;
-                padding: 15px 30px;
+                padding: 12px 25px;
+                font-weight: bold;
             }
 
             QPushButton:hover {
@@ -30,11 +33,11 @@ class Button(QPushButton):
 
             QToolTip {
                 color: #ffffff;
-                background-color:
-                #8F8F8F;
+                background-color: #8F8F8F;
                 border: none;
                 padding: 2px;
             }
         """
         self.setStyleSheet(style)
+        self.setFont(fonts.NORMAL)
         self.setCursor(QCursor(Qt.PointingHandCursor))
