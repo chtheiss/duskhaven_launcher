@@ -176,6 +176,7 @@ def add_outdated_files_to_queue(configuration):
         install_folder / "Data" / "patch-5.MPQ",
         install_folder / "Data" / "patch-A.MPQ",
         install_folder / "Data" / "patch-Z.mpq",
+        install_folder / "Data" / "patch-Y.mpq",
     ]
     for dest_path in dest_paths:
         file = str(dest_path.name)

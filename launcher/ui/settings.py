@@ -178,6 +178,10 @@ class SettingsDialog(QDialog):
         self.delete_client_zip.setFont(fonts.NORMAL)
         self.delete_client_zip.toggled.connect(self.set_delete_client_zip)
 
+        other_label = QLabel("Other")
+        other_label.setStyleSheet(section_label_style)
+        other_label.setFont(fonts.LARGE)
+
         password_wait_timer_layout = QHBoxLayout()
         password_wait_timer_layout.setAlignment(Qt.AlignLeft)
         password_wait_timer_label = QLabel("Delay until password is entered")
@@ -195,6 +199,14 @@ class SettingsDialog(QDialog):
         password_wait_timer_layout.addWidget(password_wait_timer_label)
         password_wait_timer_layout.addWidget(self.password_wait_timer)
 
+        self.no_close_on_play = QCheckBox()
+        self.no_close_on_play.setText("Do not close launcher after launching the game")
+        self.no_close_on_play.setChecked(
+            self.main_window.configuration.get("no_close_on_play", False)
+        )
+        self.no_close_on_play.setFont(fonts.NORMAL)
+        self.no_close_on_play.toggled.connect(self.set_no_close_on_play)
+
         layout.addLayout(top_bar_layout)
         layout.addWidget(installation_label)
         layout.addLayout(installation_layout)
@@ -206,7 +218,10 @@ class SettingsDialog(QDialog):
         layout.addLayout(bandwidth_layout)
         layout.addWidget(self.ignore_updates)
         layout.addWidget(self.delete_client_zip)
+        layout.addWidget(helpers.create_divider())
+        layout.addWidget(other_label)
         layout.addLayout(password_wait_timer_layout)
+        layout.addWidget(self.no_close_on_play)
         layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding))
 
         self.setStyleSheet(
@@ -257,8 +272,8 @@ class SettingsDialog(QDialog):
         screen = self.screen()
         screen_geometry = screen.geometry()
 
-        width = screen_geometry.width() * 0.4
-        height = screen_geometry.height() * 0.4
+        width = screen_geometry.width() * 0.5
+        height = screen_geometry.height() * 0.5
         x = (screen_geometry.width() - width) / 2
         y = (screen_geometry.height() - height) / 2
         self.setGeometry(x, y, width, height)
@@ -291,6 +306,12 @@ class SettingsDialog(QDialog):
         self.main_window.configuration[
             "ignore_updates"
         ] = self.ignore_updates.isChecked()
+        self.main_window.configuration.save()
+
+    def set_no_close_on_play(self):
+        self.main_window.configuration[
+            "no_close_on_play"
+        ] = self.no_close_on_play.isChecked()
         self.main_window.configuration.save()
 
     def set_limit_bandwidth(self):

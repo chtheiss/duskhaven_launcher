@@ -519,6 +519,9 @@ class Launcher(QMainWindow):
             credentials.type_password(password_)
             # credentials.type_key(Key.enter)
 
+        if self.configuration.get("no_close_on_play", False):
+            return
+
         QApplication.quit()
 
     def mousePressEvent(self, event):
